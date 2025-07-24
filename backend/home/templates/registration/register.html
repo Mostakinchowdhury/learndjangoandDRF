@@ -1,0 +1,4 @@
+{% extends "common.html" %} {% block title %} Register page {% endblock %} {% block content %} {%
+csrf_token %} {{form.as_p}}
+<button type="submit">log in</button>
+{% endblock content %}

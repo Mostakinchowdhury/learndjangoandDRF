@@ -1,0 +1,18 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %} {% endblock title %}</title>
+    <link rel="stylesheet" href='{% static "home/style.css" %}' />
+    <link rel="stylesheet" href='{% static "css/global.css" %}' />
+  </head>
+  <body>
+    <h4 class="htag">include in here nave</h4>
+    {% include "./incl.html" %}
+    <h4>included successfull</h4>
+    <h2>I am the parent template and structer</h2>
+    {% block content %} {% endblock content %}
+  </body>
+</html>
