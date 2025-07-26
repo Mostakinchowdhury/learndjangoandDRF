@@ -733,3 +733,254 @@ myproject/
 - models.Model ব্যবহার করে আপনি Python ক্লাস দিয়ে SQL টেবিল তৈরি করতে পারেন।
 
 - প্রতিবার মডেলে পরিবর্তন এলে আবার makemigrations এবং migrate দিতে হয়।
+
+## ✅ Day 4: CRUD with ORM
+
+1.Create/Read/Update/Delete (CRUD) operations
+
+2.Django shell / ORM query practice
+
+3.View থেকে DB data fetch করা
+
+4.Data form দিয়ে insert করা
+
+আমি এই লেসন গুলা কমপ্লিট করার জন্য কিছু স্টেপ নিচে এক্সপ্লেইন করসি যেটা দেখে আমরা এই লেসন তা কমপ্লিট
+করতে পারি। উপরের এই ৫ টি লেসন আমরা নিচের এই ১০ টা স্টেপ এর মাধ্যমে আমরা রিভিশন দিতে পারবো
+ইনশাআল্লাহ।
+
+🔹 STEP 1: Django ORM (Object Relational Mapper) ORM দিয়ে Python কোড লিখেই ডেটাবেজে কাজ করা যায়, SQL
+না লিখেও। Shell চালু করো:
+
+```bash
+ python manage.py shell
+```
+
+🔹 STEP 2: Create (তৈরি করা)
+
+```python
+from app_name.models import Product
+
+# 1. Create with create()
+Product.objects.create(name='Mobile', price=5000)
+
+# 2. Create with instance
+p = Product(name='Laptop', price=80000)
+p.save()
+
+```
+
+🔹 STEP 3: Read (ডেটা পড়া)
+
+```python
+# সব ডেটা পড়া
+Product.objects.all()
+
+# Filter করা
+Product.objects.filter(price__gt=5000)
+
+# একক ডেটা
+Product.objects.get(id=1)
+
+```
+
+🔹 STEP 4: Update (আপডেট করা)
+
+```python
+# প্রথমে instance আনো
+p = Product.objects.get(id=1)
+p.price = 6000
+p.save()
+
+```
+
+🔹 STEP 5: Delete (মুছে ফেলা)
+
+```python
+# প্রথমে instance আনো
+p = Product.objects.get(id=1)
+p.delete()
+
+```
+
+🔹 STEP 6: View থেকে DB Data Fetch করা
+
+```python
+# views.py
+from django.shortcuts import render
+from .models import Product
+
+def product_list(request):
+   products = Product.objects.all()
+   return render(request, 'products.html', {'products': products})
+
+
+```
+
+products.html টেম্পলেট এ সেই ডাটা access করা।
+
+```html
+<!-- products.html -->
+{% for product in products %}
+<p>{{ product.name }} - {{ product.price }}</p>
+{% endfor %}
+```
+
+🔹 STEP 7: Form দিয়ে Data Insert করা (without ModelForm)
+
+```html
+<!-- form.html -->
+<form method="POST">
+  {% csrf_token %}
+  <input type="text" name="name" />
+  <input type="number" name="price" />
+  <button type="submit">Add Product</button>
+</form>
+```
+
+```python
+# views.py
+from .models import Product
+from django.shortcuts import render.redirect
+
+
+def add_product(request):
+    if request.method == 'POST':
+        name = request.POST['name']
+        price = request.POST['price']
+        Product.objects.create(name=name, price=price)
+        return redirect("formsucces")
+    return render(request, 'form.html')
+
+```
+
+🔹 STEP 8: Form + Modelform দিয়ে Data Insert করা
+
+```python
+# forms.py
+
+from django import forms
+from .models import Product
+
+class ProductForm(forms.ModelForm):
+    class Meta:
+        model = Product
+        fields = ['name', 'price', 'description']
+```
+
+👉 ModelForm ব্যবহার করলে ম্যানুয়ালি input বানাতে হয় না। Django নিজেই ফর্ম ফিল্ড তৈরি করে নেয়।
+
+```python
+# views.py
+
+from django.shortcuts import render, redirect
+from .forms import ProductForm
+
+def add_product(request):
+    if request.method == 'POST':
+        form = ProductForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('product_list')
+    else:
+        form = ProductForm()
+    return render(request, 'add_product.html', {'form': form})
+```
+
+```html
+<!-- templates/add_product.html -->
+
+<h2>Add Product</h2>
+<form method="POST">
+  {% csrf_token %} {{ form.as_p }}
+  <button type="submit">Add</button>
+</form>
+```
+
+📝 {{ form.as_p }} মানে ফর্ম ফিল্ডগুলো <p> ট্যাগের ভিতরে রেন্ডার হবে।
+
+🔹 STEP 8: Form + Modelform দিয়ে Data Update (Edit Product) করা
+
+```python
+# views.py
+
+from .models import Product
+from .forms import ProductForm
+
+def edit_product(request, pk):
+    product = Product.objects.get(id=pk)
+    if request.method == 'POST':
+        form = ProductForm(request.POST, instance=product)
+        if form.is_valid():
+            form.save()
+            return redirect('product_list')
+    else:
+        form = ProductForm(instance=product)
+    return render(request, 'edit_product.html', {'form': form})
+
+```
+
+```html
+<!-- templates/edit_product.html -->
+
+<h2>Edit Product</h2>
+<form method="POST">
+  {% csrf_token %} {{ form.as_p }}
+  <button type="submit">Update</button>
+</form>
+```
+
+📌 instance=product দিলে form প্রি-ফিলড হবে আগের ডেটা দিয়ে। 📌 (request.POST, instance=product) দিলে
+instance এর ডাটা মানে আগের ডাটা request.POST দ্বারা replace করবে।
+
+🔹Django ModelForm এর ৪টি রূপ
+
+| রূপ নম্বর | রূপ (Code)                                         | উদ্দেশ্য               | কখন ব্যবহার হয়                       | ব্যাখ্যা / উদাহরণ                                              |
+| --------- | -------------------------------------------------- | ---------------------- | ------------------------------------ | -------------------------------------------------------------- |
+| 1         | `ProductForm()`                                    | Empty form             | ফাঁকা ফর্ম দেখাতে                    | নতুন প্রোডাক্ট add করার সময়, প্রথমবার ফর্ম দেখানো হয়           |
+| 2         | `ProductForm(data=request.POST)`                   | POST ডেটা নেওয়া        | ফর্ম সাবমিট হওয়ার পর ভ্যালিডেশন করতে | ইনপুট ভ্যালিড হলে `form.save()` করা হয়                         |
+| 3         | `ProductForm(instance=product)`                    | প্রি-ফিল্ড ফর্ম        | আগের ডেটা সহ ফর্ম দেখাতে             | Edit করার সময় আগের প্রোডাক্টের ইনফো দিয়ে ফর্ম পূরণ হয়          |
+| 4         | `ProductForm(data=request.POST, instance=product)` | Update with validation | ফর্ম সাবমিট করে ডেটা আপডেট করার সময়  | পুরাতন ডেটার উপর নতুন ভ্যালু বসিয়ে `save()` করলে ডেটা আপডেট হয় |
+
+🔸 STEP 10: Advanced Product List View
+
+```python
+# views.py
+
+def product_list(request):
+    products = Product.objects.all()
+    return render(request, 'product_list.html', {'products': products})
+```
+
+```html
+<!-- templates/product_list.html -->
+
+<h2>Product List</h2>
+<table border="1">
+  <tr>
+    <th>Name</th>
+    <th>Price</th>
+    <th>Description</th>
+    <th>Actions</th>
+  </tr>
+  {% for p in products %}
+  <tr>
+    <td>{{ p.name }}</td>
+    <td>{{ p.price }}</td>
+    <td>{{ p.description }}</td>
+    <td>
+      <a href="{% url 'edit_product' p.id %}">Edit</a> |
+      <a href="{% url 'delete_product' p.id %}">Delete</a>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+```
+
+✅ রিভিশন কৌশল:
+
+| Form রূপ                                  | Context (কোথায় ব্যবহার হয়?)         |
+| ----------------------------------------- | ----------------------------------- |
+| `ProductForm()`                           | নতুন ফর্ম দেখানোর সময়               |
+| `ProductForm(request.POST)`               | সাবমিটের পর ইনপুট যাচাই             |
+| `ProductForm(instance=...)`               | আগের ডেটা প্রি-ফিল্ড করার সময়       |
+| `ProductForm(request.POST, instance=...)` | সাবমিট করে আগের ডেটা আপডেট করার সময় |
