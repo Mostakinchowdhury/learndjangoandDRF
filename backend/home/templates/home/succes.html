@@ -1,0 +1,19 @@
+{% extends "./base.html" %}
+{% block title %}
+  success page
+{% endblock title %}
+ {% block content %}
+   {% if messages %}
+  <ul>
+    {% for message in messages %}
+      <li {% if message.tags %} class="{{ message.tags }}" {% endif %}>
+        {{ message }}
+      </li>
+    {% endfor %}
+  </ul>
+  
+{% endif %}
+
+   <hr>
+   <a href='{% url "home:products" %}'>Go to products page</a>
+ {% endblock  %}

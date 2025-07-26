@@ -1,0 +1,12 @@
+{% extends "./base.html" %} {% block title %} single product page {% endblock title %}
+{% block content %}
+<del>Welcome to product page</del>
+<h1>{{product.product_name}}</h1>
+<p>{{product.product_price}}</p>
+<p>{{product.product_type}}</p>
+<p>{{product.product_description}}</p>
+<p>{{product.like_quantity}}</p>
+<p>{{product.adding_date}}</p>
+<p>{{product.last_update}}</p>
+ <a href='{% url "home:deleteform" pk=product.id %}'>Delete product</a>
+{% endblock content %}

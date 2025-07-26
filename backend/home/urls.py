@@ -7,9 +7,15 @@ urlpatterns = [
     path('', views.home, name="home"),
     path('about/<int:num>/', views.about, name="about"),
     path('here/<int:num>/', views.here, name="here"),
-
+    path('product/<int:pk>/', views.product, name="product"),
+    path('updateform/<int:pk>/', views.updateform, name="updateform"),
+    path('deleteform/<int:pk>/', views.deleteform, name="deleteform"),
+    path('productsucces/', views.productsucces, name="productsucces"),
+    path('products', views.products, name="products"),
+    path('newproducts', views.newproducts, name="newproducts"),
     path("nothing/<int:num>/", views.nothing, name="nothing"),
     path("nothing/", views.nothingnot, name="nothingnot"),
     path("kichuna/", views.kichuna, name="kichuna"),
-    path("test-reverse/", views.test_reverse),path("accounts/", include("django.contrib.auth.urls")),
+    path("test-reverse/", views.test_reverse),
+    path("", include("django.contrib.auth.urls")),
 ]
