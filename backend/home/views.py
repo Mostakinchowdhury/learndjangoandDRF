@@ -5,6 +5,7 @@ from django.contrib.auth import  urls
 from .models  import Products_detail
 from .forms import Productform
 from django.contrib import messages
+# from django.core import mail
 
 def home(request):
     return HttpResponse("This is the home page")
