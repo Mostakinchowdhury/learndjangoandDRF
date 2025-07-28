@@ -1675,7 +1675,7 @@ def user_logout(request):
 ```text
 User Login → login(request, user)
               ↓
-           session.save() → DB/session backend
+           session.save() → DB/session backend as {sessionid:xyz,user_id,abc, authentication_backend:"your auth backend setup"}
               ↓
            Set-Cookie: sessionid=xyz ← to browser
 
@@ -1683,9 +1683,11 @@ User Login → login(request, user)
      ↓
    Cookie: sessionid=xyz ← comes with request
      ↓
-  SessionMiddleware gets session from DB
+  SessionMiddleware gets session object from sesson DB by this sessionid cookey
      ↓
-  AuthenticationMiddleware → request.user = User instance
+  AuthenticationMiddleware →
+ get user object by sesson object user_id property and set
+request.user = User instance
 
 ```
 
