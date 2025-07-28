@@ -1564,3 +1564,188 @@ class Form:
 
 এই handnote টিতে Django Form Handling এর almost সব গুরুত্বপূর্ণ বিষয় আলোচনার ভিত্তিতে লিপিবদ্ধ করা
 হয়েছে। Future এ একবার পড়লেই সব clear হবে, এবং এটা রিভিশনের জন্য পারফেক্ট।
+
+## 🍪 ✅ Day 7: Authentication System
+
+- Session authentication
+- Django built-in auth
+- Register, Login, Logout view
+- login_required, messages
+
+### 🧠 ১. Cookie কীভাবে কাজ করে?
+
+### ✅ Server থেকে Cookie set:
+
+```http
+HTTP/1.1 200 OK
+Set-Cookie: sessionid=abc123xyz; Path=/; HttpOnly
+```
+
+➡️ ব্রাউজার বুঝে যায় এটি একটি কুকি এবং সেটি তার internal cookie store-এ সেভ করে।
+
+### ✅ পরবর্তী Request এ:
+
+```http
+GET /dashboard HTTP/1.1
+Host: example.com
+Cookie: sessionid=abc123xyz
+```
+
+➡️ ব্রাউজার সেই কুকি সার্ভারে পাঠিয়ে দেয়।
+
+### ✅ Cookie পাঠানোর শর্ত:
+
+| শর্ত         | ব্যাখ্যা                                       |
+| ------------ | ---------------------------------------------- |
+| Domain match | কুকি যেই ডোমেইন থেকে এসেছে, সেই ডোমেইনে পাঠাবে |
+| Path match   | কুকি যেই path এর জন্য সেট, সেই path-এ পাঠাবে   |
+| Secure       | শুধুমাত্র HTTPS এর জন্য পাঠাবে                 |
+| HttpOnly     | JavaScript access করতে পারবে না                |
+
+### 🔐 ২. Cookie দিয়ে Session কীভাবে কাজ করে?
+
+1. **User Login করলে**, Django একটা `sessionid` কুকি সেট করে।
+2. এই কুকি ব্রাউজার সেভ করে এবং পরবর্তী রিকোয়েস্টে পাঠায়।
+3. Django এই কুকি দেখে বুঝে ফেলে user কে।
+4. Django backend-এ `/sessions/` table বা Redis-এ session data রাখে।
+
+---
+
+### 🔐 Django Authentication System
+
+### 🧾 ৩. Built-in Auth Views
+
+### ✅ Registration View:
+
+```python
+from django.contrib.auth.models import User
+
+def register(request):
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+        User.objects.create_user(username=username, password=password)
+        return redirect('login')
+    return render(request, 'register.html')
+```
+
+### ✅ Login View:
+
+```python
+from django.contrib.auth import authenticate, login
+
+def user_login(request):
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+        user = authenticate(username=username, password=password)
+        if user is not None:
+            login(request, user)  # Session শুরু হয় এখানে
+            return redirect('dashboard')
+    return render(request, 'login.html')
+```
+
+### ✅ Logout View:
+
+```python
+from django.contrib.auth import logout
+
+def user_logout(request):
+    logout(request)  # reuest এর জন্য sessionid নিয়ে ওই ইউসার এর  Session Destroy করে django এর সেশন ডিবি থেকে এন্ড ব্রমের এর sessionid cookey null/remove  করে দেয়
+    return redirect('login')
+```
+
+---
+
+### 🗂️ ৪. Session Authentication
+
+✅ Django session-based authentication ব্যবহার করে।
+
+| ধাপ | ব্যাখ্যা                                  |
+| --- | ----------------------------------------- |
+| 1   | Login করলে session তৈরি হয়                |
+| 2   | Django কুকিতে `sessionid` পাঠায়           |
+| 3   | ব্রাউজার সেই কুকি পাঠায় প্রতি request এ   |
+| 4   | Django সেই sessionid দেখে user সনাক্ত করে |
+
+---
+
+🔄 Diagram (সংক্ষিপ্ত)
+
+```text
+User Login → login(request, user)
+              ↓
+           session.save() → DB/session backend
+              ↓
+           Set-Cookie: sessionid=xyz ← to browser
+
+→ User sends next request
+     ↓
+   Cookie: sessionid=xyz ← comes with request
+     ↓
+  SessionMiddleware gets session from DB
+     ↓
+  AuthenticationMiddleware → request.user = User instance
+
+```
+
+## 🛑 ৫. @login_required Decorator
+
+```python
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def dashboard(request):
+    return render(request, 'dashboard.html')
+```
+
+➡️ এই ডেকোরেটর check করে user logged in কিনা। না থাকলে login page এ রিডাইরেক্ট করে।
+
+---
+
+## 💬 ৬. Django Messages Framework
+
+### ✅ উদাহরণ:
+
+```python
+from django.contrib import messages
+from django.shortcut import redirect
+
+def login_view(request):
+    if request.method == 'POST':
+        # ...
+        if user is not None:
+            login(request, user)
+            messages.success(request, 'Login successful!')
+            return redirect("messages")
+
+        else:
+            messages.error(request, 'Invalid credentials')
+            return redirect("messages")
+```
+
+### ✅ template এ দেখাতে:
+
+```html
+{% for message in messages %}
+<div class="alert">{{ message }}</div>
+{% endfor %}
+```
+
+---
+
+### `✅ সব মেথড + কমান্ড এবং এগুলার কাজ`
+
+| বিষয়                                                            | কাজ                                                                                                                                                                                                                                                                                                                |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Cookie                                                          | ব্রাউজার এবং সার্ভারের মধ্যে ডেটা সংরক্ষণের মাধ্যম                                                                                                                                                                                                                                                                 |
+| Set-Cookie                                                      | Server -> Browser: কুকি সেট করার কমান্ড                                                                                                                                                                                                                                                                            |
+| Cookie header                                                   | Browser -> Server: কুকি পাঠানোর জন্য                                                                                                                                                                                                                                                                               |
+| Session                                                         | Server-side storage, user কে track করতে সাহায্য করে                                                                                                                                                                                                                                                                |
+| login()                                                         | Django session শুরু/make করে, কুকি সেট করে set_cookey দিয়া এবং sesssion middleware প্রতি রিকোয়েস্ট অনুযায়ী তার মধ্যে ব্রাউসার থেকে পাঠানো sessionid কুকি অনুযায়ী django sesson ডিবি হতে ইউসার fetch করে request.user এ সেই user অবজেক্ট পাঠায় তাই আমরা template এ request.user.username দিলে লগইন ইউসার এর নাম পাই |
+| logout(request)                                                 | request অবজেক্ট এ থাকা sessionid এর জন্য যেই ইনস্ট্যান্স সেশন এ আচে সেই Session অবজেক্ট destroy করে। করে                                                                                                                                                                                                           |
+| authenticate(request,username="something",password="something") | authenticate করে যদি এই ইনফরমেশন এ কোন ইউসার পায় তাহলে User object return করে না হলে none return করে                                                                                                                                                                                                               |
+| @login_required(login_url="loginpage")                          | Authenticated user না হলে redirect করে login_url এ যেই ইউআরএল thake সেখানে রিডাইরেক্ট করে।                                                                                                                                                                                                                         |
+| messages                                                        | User feedback display করতে flash মেসেজ পাঠায় রিটার্ন পেজ এ যা একবার এর জন্য দেখায় এন্ড এটা সেশন বেসড তাই রিকোয়েস্ট অবজেক্ট পাঠাতে হয় একবার শো করলে সেশন থেকে ডেস্ট্রয় হয় আর সীন না করা পর্যন্ত রিফ্রেশ করলেও মেসেজ থেকেই যায়।                                                                                      |
+
+---
