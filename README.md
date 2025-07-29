@@ -1691,7 +1691,7 @@ request.user = User instance
 
 ```
 
-## 🛑 ৫. @login_required Decorator
+## 🛑 ৫. @login_required,@user_passes_test Decorator and lamda
 
 ```python
 from django.contrib.auth.decorators import login_required
@@ -1702,6 +1702,131 @@ def dashboard(request):
 ```
 
 ➡️ এই ডেকোরেটর check করে user logged in কিনা। না থাকলে login page এ রিডাইরেক্ট করে।
+
+## 🧠 `lambda` & `@user_passes_test` in Django (Handnote)
+
+---
+
+### ✅ `lambda` in Python
+
+#### 🔹 কী?
+
+`lambda` হলো Python-এর anonymous (নামহীন) এক লাইনের ফাংশন।
+
+#### 🔹 Syntax:
+
+```python
+lambda arguments: expression
+```
+
+#### 🔹 উদাহরণ:
+
+```python
+add = lambda a, b: a + b
+print(add(3, 5))  # Output: 8
+```
+
+#### 🔹 ব্যবহার:
+
+- ছোট ফাংশন বা expression
+- `map()`, `filter()`, `sorted()`, `decorator`, ইত্যাদির মধ্যে
+- কোথায় একবারের জন্যো ফাংশন লাগলে
+
+#### 🔹 Practical Example:
+
+```python
+squared = list(map(lambda x: x * x, [1, 2, 3]))
+# Output: [1, 4, 9]
+```
+
+---
+
+### ✅ `@user_passes_test` in Django
+
+#### 🔹 কী?
+
+`@user_passes_test` হচ্ছে Django এর একটা **decorator** যার মাধ্যমে আপনি নির্দিষ্ট test দিয়ে **view
+access control** করতে পারেন।
+
+#### 🔹 Syntax:
+
+```python
+from django.contrib.auth.decorators import user_passes_test
+
+@user_passes_test(lambda u: u.is_superuser)
+def my_view(request):
+    ...
+```
+
+#### 🔹 lambda u: u.is_superuser
+
+এখানে:
+
+- `u` হলো `request.user`
+- এটি check করে user superuser কি না
+
+#### 🔹 বিকল্পভাবে (function দিয়ে):
+
+```python
+def is_admin(user):
+    return user.is_superuser
+
+@user_passes_test(is_admin)
+def dashboard(request):
+    ...
+```
+
+---
+
+### 📌 কোথায় ব্যবহার করব?
+
+- যেসব view-তে আপনি চান **শুধু logged in user বা specific user type (admin/staff)** access করুক
+- Example:
+
+  - `@user_passes_test(lambda u: u.is_authenticated)`
+  - `@user_passes_test(lambda u: u.is_staff)`
+  - `@user_passes_test(lambda u: u.is_superuser)`
+  - `@user_passes_test(lambda u: u.is_active)`
+
+---
+
+### 🚫 Access না পেলে কী হয়?
+
+Default-ভাবে user শর্ত না মানলে তাকে **login page এ redirect** করা হয়। তুমি চাইলে custom redirect
+URL ও দিতে পারো:
+
+```python
+@user_passes_test(lambda u: u.is_superuser, login_url='/no-access/')
+```
+
+---
+
+### 🦾 সংক্ষিপ্ত মনে রাখার নিয়ম:
+
+| বিষয়               | কাজ              | ব্যবহার             |
+| ------------------- | ---------------- | ------------------- |
+| `lambda`            | এক লাইনের ফাংশন  | Python & callback   |
+| `@user_passes_test` | User কে test করে | Django view control |
+
+---
+
+### ✅ Common Example:
+
+```python
+from django.contrib.auth.decorators import user_passes_test
+
+@user_passes_test(lambda user: user.is_authenticated)
+def profile_view(request):
+    ...
+```
+
+---
+
+## 🖚 শেষ কথা:
+
+- **`lambda`** → ছোট ফাংশনের শর্টকার্ট
+- **`@user_passes_test`** → view কে protect করার tool
+- দুটোই powerful & Pythonic 🐍
 
 ---
 
@@ -1751,3 +1876,294 @@ def login_view(request):
 | messages                                                        | User feedback display করতে flash মেসেজ পাঠায় রিটার্ন পেজ এ যা একবার এর জন্য দেখায় এন্ড এটা সেশন বেসড তাই রিকোয়েস্ট অবজেক্ট পাঠাতে হয় একবার শো করলে সেশন থেকে ডেস্ট্রয় হয় আর সীন না করা পর্যন্ত রিফ্রেশ করলেও মেসেজ থেকেই যায়।                                                                                      |
 
 ---
+
+
+# ✅ Django Custom User Model Handnote (Day 08)
+
+## 🔰 Custom User Model কেন ব্যবহার করব?
+
+Django-এর default user model অনেক সময় আমাদের প্রয়োজন অনুযায়ী field (যেমন: phone\_number, profile\_image ইত্যাদি) রাখার সুযোগ দেয় না। তাই আমরা custom user model ব্যবহার করি যাতে user model নিজের মতো modify করা যায়।
+
+---
+
+## 🔹 AbstractUser vs AbstractBaseUser
+
+| Topic           | AbstractUser                           | AbstractBaseUser                  |
+| --------------- | -------------------------------------- | --------------------------------- |
+| Inherits        | Django's built-in User model           | Only Base user class              |
+| Fields          | Default fields (username, email, etc.) | Must define all fields manually   |
+| Easier to use?  | ✅ হ্যাঁ (prebuilt features পেয়ে যাব)   | ❌ না (সব manually define করতে হয়) |
+| Password System | Built-in আছে                           | নিজে implement করতে হয়            |
+
+---
+
+## 🔹 Custom User Model এ কী কী থাকতে হবে?
+
+1. AbstractUser থেকে extend করা Model:
+
+```python
+class CustomUser(AbstractUser):
+    phone_number = models.CharField(max_length=20)
+    profile_image = models.ImageField(upload_to='profile/', blank=True, null=True)
+```
+
+2. Custom Manager তৈরি করতে হবে:
+
+```python
+class CustomUserManager(BaseUserManager):
+    def create_user(self, username, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError('Users must have an email address')
+        email = self.normalize_email(email)
+        user = self.model(username=username, email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, username, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_staff', True)
+        return self.create_user(username, email, password, **extra_fields)
+```
+
+3. Custom User Model এ Manager যুক্ত করতে হবে:
+
+```python
+class CustomUser(AbstractUser):
+    phone_number = models.CharField(max_length=20)
+    profile_image = models.ImageField(upload_to='profile/', blank=True, null=True)
+
+    objects = CustomUserManager()  # Custom Manager যুক্ত করা হলো
+```
+
+4. settings.py এ জানাতে হবে:
+
+```python
+AUTH_USER_MODEL = 'yourapp.CustomUser'
+```
+
+---
+
+
+## Django Profile Page
+
+````markdown
+# Django Profile Page তৈরির গাইড (request.user ব্যবহার করে)
+
+## ভূমিকা
+এই গাইডে শেখানো হবে কিভাবে Django এর built-in `request.user` অবজেক্ট ব্যবহার করে একজন লগইনকৃত ইউজারের প্রোফাইল পেজ তৈরি করা যায়।
+
+---
+
+## ১. URL Configuration
+
+প্রথমে তোমার `urls.py` ফাইলে প্রোফাইল পেজের URL এন্ট্রি দিতে হবে:
+
+```python
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('profile/', views.profile_view, name='profile'),
+]
+````
+
+---
+
+## ২. View Function
+
+`views.py` ফাইলে `profile_view` ফাংশন তৈরি করো:
+
+```python
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+
+@login_required  # নিশ্চিত করবে ইউজার লগইন আছে
+def profile_view(request):
+    user = request.user
+    context = {
+        'user': user,
+    }
+    return render(request, 'profile.html', context)
+```
+
+---
+
+## ৩. Template ফাইল (profile.html)
+
+`templates` ফোল্ডারে `profile.html` তৈরি করো:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>{{ user.username }} এর প্রোফাইল</title>
+</head>
+<body>
+    <h1>প্রোফাইল পেজ</h1>
+    <p><strong>নাম:</strong> {{ user.get_full_name }}</p>
+    <p><strong>ইমেইল:</strong> {{ user.email }}</p>
+    <p><strong>ইউজারনেম:</strong> {{ user.username }}</p>
+    <!-- প্রয়োজনমতো আরও ফিল্ড যোগ করতে পারো -->
+</body>
+</html>
+```
+
+---
+
+## ৪. Authentication Setup
+
+* নিশ্চিত করো তোমার settings.py-তে `LOGIN_URL` সঠিক আছে (যেমন: `/accounts/login/`)
+* লগইন ছাড়া কেউ প্রোফাইল পেজে যেতে না পারে এজন্য `@login_required` ডেকোরেটর ব্যবহার করা হয়েছে।
+
+---
+
+### হ্যান্ডনোট (Handnote)
+```html
+<div style="border:1px solid #ccc; padding:10px; background:#f9f9f9; position: relative;">
+<h3>Quick Tips</h3>
+<pre id="handnote-text" style="white-space: pre-wrap; word-wrap: break-word;">
+1. প্রোফাইল পেজ শুধুমাত্র লগইন করা ইউজারের জন্য।
+2. request.user দিয়ে সহজেই ইউজারের ডাটা পাওয়া যায়।
+3. @login_required ডেকোরেটর ইউজারকে লগইন করাতে বাধ্য করে।
+4. user.get_full_name() নাম দেখানোর জন্য ব্যবহৃত হয়।
+5. ইমেইল, ইউজারনেম সব প্রপার্টি পাওয়া যায় request.user থেকে।
+</pre>
+<button id="copy-btn" style="position: absolute; top: 10px; right: 10px; padding: 4px 10px; cursor: pointer;">Copy</button>
+</div>
+
+<script>
+  document.getElementById('copy-btn').addEventListener('click', function() {
+    const text = document.getElementById('handnote-text').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      alert('Handnote copied!');
+    }).catch(() => {
+      alert('Copy failed, please copy manually.');
+    });
+  });
+</script>
+```
+
+---
+
+
+## 🔹 Model.objects.create vs Model()
+
+| Model.objects.create                   | Model() + save()                     |
+| -------------------------------------- | ------------------------------------ |
+| Object তৈরি ও সাথে সাথে DB-তে save করে | Object তৈরি হয়, পরে `save()` দিতে হয় |
+| Internal call করে `.save()`            | Manually `obj.save()` দিতে হয়        |
+
+---
+
+## 🔹 set\_password() কোথা থেকে আসে?
+
+* এটি `AbstractBaseUser` এর instance method।
+* এর মাধ্যমে password hashed করে save করা হয়।
+
+---
+
+## 🔹 extra\_fields কাজ কী করে?
+
+```python
+extra_fields = {"is_superuser": True, "is_staff": True}
+```
+
+* `user = self.model(username, email, **extra_fields)` → এর মানে:
+
+  ```python
+  user = self.model(username=username, email=email, is_superuser=True, is_staff=True)
+  ```
+* এটি dictionary spread করে additional fields assign করে।
+* Python এ `**kwargs` → keyword arguments dict আকারে নেয়।
+
+---
+
+## 🔹 extra\_fields.setdefault()
+
+* Python dictionary এর built-in method
+
+```python
+extra_fields.setdefault('is_superuser', True)
+```
+
+* যদি key `is_superuser` না থাকে তবে `True` set করবে।
+
+---
+
+## 🔹 ValueError কোথা থেকে আসে?
+
+* Python built-in exception। Import করার দরকার নাই।
+
+```python
+raise ValueError("Users must have an email address")
+```
+
+---
+
+## 🔹 model manager / object manager কি?
+
+* প্রতিটি Model এর সাথে `objects` নামে default manager থাকে:
+
+```python
+User.objects.all()
+User.objects.filter()
+```
+
+* আমরা চাইলে Custom Manager তৈরি করে `.objects` override করতে পারি।
+* Custom Query behaviors define করতে পারি।
+* Manager override করার উদাহরণ:
+
+```python
+class ActiveUserManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_active=True)
+```
+
+---
+
+## 🔹 UserCreationForm extend করার কারণ?
+
+* `UserCreationForm` Django এর built-in form যেটা automatic কিছু validation (`clean_username`, `clean_password2`, etc) provide করে।
+* Custom User Form তৈরি করার সময় এটি inherit করলে default validation system active থাকে।
+
+---
+
+## 🔹 USERNAME\_FIELD vs REQUIRED\_FIELDS
+
+| Field            | কাজ                                                      |
+| ---------------- | -------------------------------------------------------- |
+| USERNAME\_FIELD  | কোন field দিয়ে user authenticate হবে (default: username) |
+| REQUIRED\_FIELDS | createsuperuser চলাকালে যে fields চাই তা define করা      |
+
+```python
+USERNAME_FIELD = 'email'
+REQUIRED_FIELDS = ['username']
+```
+
+---
+
+## 🔹 Authentication Backend সেট করা:
+
+```python
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+]
+```
+
+---
+
+### ✅ আপনি কি বুঝেছেন?
+
+* CustomUser কেন দরকার
+* Manager কি ও কেন override করতে হয়
+* Model vs Model.objects.create পার্থক্য
+* set\_password এর পেছনের কাহিনী
+* extra\_fields কীভাবে কাজ করে
+* CustomUserManager কি ও কেন দরকার
+* AUTH\_USER\_MODEL কোথায় সেট করতে হয়
+
+---
+
+এই handnote টা নিয়মিত revise করলে Django Custom User Model + Form ব্যবস্থার সব logic পরিষ্কার থাকবে। ✅
