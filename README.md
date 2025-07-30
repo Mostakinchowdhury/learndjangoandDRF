@@ -2166,4 +2166,438 @@ AUTHENTICATION_BACKENDS = [
 
 ---
 
-এই handnote টা নিয়মিত revise করলে Django Custom User Model + Form ব্যবস্থার সব logic পরিষ্কার থাকবে। ✅
+
+---
+
+## ✅ Day 9: Middleware & Decorator
+
+- Custom middleware কী এবং কিভাবে বানানো যায়
+- Custom Decorator কী এবং কিভাবে বানানো যায়
+- Decorator ও Permission based view
+### ✅ Part 1: Middleware
+
+#### 🧠 Middleware কী?
+
+Middleware হলো Django-এর এমন এক সিস্টেম যেখানে তুমি HTTP request এবং response এর মাঝখানে **extra কাজ (logic)** করতে পারো।
+
+> 🎯 মনে রাখো: Middleware = Request & Response এর মাঝখানে দাঁড়িয়ে নিয়ন্ত্রণ করা।
+
+---
+
+#### 🧩 Django Middleware কখন চলে?
+
+1. **Request আসলে** → Middleware আগে চলে → তারপর View ফাংশনে যায়
+2. **Response রিটার্ন হলে** → Middleware আবার কাজ করে → তারপর Client এ পাঠায়
+
+---
+
+#### 🔧 কেন Middleware দরকার?
+
+তুমি View-এ অনেক কাজ করতে পারো ঠিক, কিন্তু Middleware এর কিছু Extra সুবিধা:
+
+| সুবিধা                              | কারণ                                  |
+| ----------------------------------- | ------------------------------------- |
+| Request আসার আগেই check করা যায়     | যেমন user authenticated কিনা          |
+| View execute হওয়ার আগেই কাজ করা যায় | IP blacklist করা, custom logging      |
+| Response modify করা যায়             | HTML footer যোগ করা, CORS header দেয়া |
+| সব View-র আগেই বা পরে কাজ করে       | common কাজ বারবার না লিখতে            |
+
+---
+
+### 🏗️ Custom Middleware বানানো (Function-Based)
+
+### ✅ Step-by-step:
+
+```python
+# myapp/middleware.py
+
+def my_middleware(get_response):
+    print("👉 Middleware Initialized")
+
+    def middleware(request):
+        print("🔹 Request Middleware: view-এর আগে")
+        response = get_response(request)
+        print("🔸 Response Middleware: view-এর পরে")
+        return response
+
+    return middleware
+```
+
+#### 🔍 কী কী ব্যবহার হলো?
+
+| জিনিস                              | কাজ                                                     |
+| ---------------------------------- | ------------------------------------------------------- |
+| `get_response`                     | এটা হলো সেই function যেটা request নিয়ে View-কে call করে |
+| `request`                          | HTTP request object                                     |
+| `response = get_response(request)` | View function কে call করে, তার result ধরে               |
+| return response                    | Client কে response পাঠায়                                |
+
+---
+
+#### ⚠️ যদি `get_response(request)` না দিতাম?
+
+View কখনোই execute হতো না। তোমার middleware শুধু request পেত, কিন্তু response রিটার্ন করতো না — Server হ্যাং হয়ে যেত।
+
+---
+
+#### 🔗 settings.py-তে যুক্ত করো:
+
+```python
+MIDDLEWARE = [
+    ...
+    'myapp.middleware.my_middleware',
+]
+```
+
+---
+
+### 🏗️ Custom Middleware (Class-Based)
+
+#### ✅ Syntax:
+
+```python
+class MyMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+        print("👉 Middleware Initialized")
+
+    def __call__(self, request):
+        print("🔹 Request Middleware: view-এর আগে")
+        response = self.get_response(request)
+        print("🔸 Response Middleware: view-এর পরে")
+        return response
+```
+
+#### 🧠 ব্যাখ্যা:
+
+| Method         | কাজ                                     |
+| -------------- | --------------------------------------- |
+| `__init__`     | middleware setup হয় যখন Django start হয় |
+| `get_response` | View কে call করার function              |
+| `__call__`     | প্রতিবার request এ middleware চালায়     |
+| `request`      | HTTPRequest object                      |
+| `response`     | View এর return                          |
+
+---
+
+#### ❓ কেন `__call__()` লাগে?
+
+Django middleware instance কে function-এর মতো call করে: `middleware_instance(request)`
+`__call__` না দিলে, middleware request handle করতে পারতো না।👉 Middleware class এর __call__ হল python  এর বিল্ড ইন একটি special dunder method যেটা class এর instance কে function-এর মতো call করার ক্ষমতা দেয়।instance কে ফাংশনের মতো call করলে __call__() method execute হয়। যা একটা ভিউ function রিটার্ন করে ডেকোরেটর যেমন করে কারণ আমরা জানি যে middleware এক ধরণের বিশেষ ডেকোরেটর যার স্পেশাল কিছু behave/power  আছে।
+
+---
+
+#### 📌 কোথায় কোন কোড চলে?
+
+| জায়গা                   | কাজ                                                |
+| ----------------------- | -------------------------------------------------- |
+| `__init__()`            | Django server start করার সময় চলে (একবার)           |
+| `__call__()`            | প্রতিবার request আসলে চলে                          |
+| `get_response(request)` | View কে call করে, তারপর view শেষ হলে বাকি code চলে |
+
+---
+
+#### 🎁 Bonus: Middleware Hook গুলো
+
+Class-based middleware-এ আরও কিছু hook থাকে:
+
+| Method                        | কখন চলে                          | কাজ                          |
+| ----------------------------- | -------------------------------- | ---------------------------- |
+| `process_view()`              | view function execute হওয়ার আগে | view check, arguments change |
+| `process_exception()`         | যদি exception হয়                 | error handle                 |
+| `process_template_response()` | template response modify         |                              |
+
+> ⚠️ এগুলো শুধু old style middleware-এ use হয়, Django 1.10+ এ নতুন style হচ্ছে `__init__`, `__call__`
+
+---
+
+---
+
+### ✅ Part 2: Decorator
+
+## 🧠 Decorator কী?
+
+Decorator হচ্ছে Python-এর একটা ফিচার, যা **function-এর উপরে আরেকটা function "লেপে" দেয়**, যেন কিছু অতিরিক্ত কাজ হয়।
+
+---
+
+## 🎯 Django-তে কেন Decorator দরকার?
+
+* একটা view-র আগে/পরে কাজ করতে
+* User login check করতে
+* Permission check করতে
+* Custom logic add করতে
+
+---
+
+## 🧩 Custom Decorator বানানো (Step by Step)
+
+### ✅ Basic Structure:
+
+```python
+from functools import wraps
+
+def my_decorator(view_func):
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        print("🔹 View এর আগে কিছু করলাম")
+        response = view_func(request, *args, **kwargs)
+        print("🔸 View এর পরে কিছু করলাম")
+        return response
+    return wrapper
+```
+
+### 🔍 ব্যাখ্যা:
+
+| জিনিস                      | কাজ                                          |
+| -------------------------- | -------------------------------------------- |
+| `@wraps(view_func)`        | মূল function-এর নাম ও docstring বজায় রাখে    |
+| `request, *args, **kwargs` | Django view function-এ সব argument ধরার জন্য |
+| `view_func(request)`       | মূল view কে call করে                         |
+| return response            | response ক্লায়েন্টে পাঠায়                    |
+
+---
+
+### ✅ Custom Decorator Use করার নিয়ম:
+
+```python
+@my_decorator
+def my_view(request):
+    return HttpResponse("Hello from view")
+```
+
+---
+
+#### ❓Decorator ছাড়া কি সম্ভব?
+
+হ্যাঁ, কিন্তু প্রতিটা view-তে একই code বারবার লিখতে হতো। DRY (Don't Repeat Yourself) ভাঙত।
+
+✅ কখন my_decorator() চলে, কখন wrapper() চলে?
+
+| ফাংশন            | কখন চলে                                                           |
+| ---------------- | ----------------------------------------------------------------- |
+| `my_decorator()` | যখন Python তোমার view কে decorate করে (server start-এর সময় একবার) |
+| `wrapper()`      | যখন user request করে এবং decorated view call হয়                   |
+
+####  Server start হলে
+- তোমার view কে decorate করে (server start-এর সময় একবার)
+- Django তোমার সব middleware read করে (settings.py → MIDDLEWARE list থেকে)
+
+- প্রতিটি middleware কে call করে একবার → middleware_instance = middleware(get_response)
+
+- এর মানে প্রতিটি middleware get_response কে wrap করে নতুন একটা callable return করে।
+
+
+➡️ সব middleware একটার ভেতরে আরেকটা nested হয়।
+
+
+### 🌀 Middleware vs Decorator: পার্থক্য
+
+| দিক                         | Middleware                           | Decorator                              |
+| --------------------------- | ------------------------------------ | -------------------------------------- |
+| ব্যবহৃত হয়                  | Django core request/response cycle-এ | শুধুমাত্র view ফাংশনের উপর             |
+| কে apply করে                | Django নিজেই (server start-এ)        | তুমি নিজে কোডে `@decorator` দিয়ে       |
+| Scope                       | global (সব view-তে)                  | local (নির্দিষ্ট view-এ)               |
+| Request/Response handle করে | হ্যাঁ                                | না, শুধুমাত্র view-এর আগে/পরে          |
+| Initialization সময়          | Django চলার সময়                      | Python runtime-এ (function define সময়) |
+
+
+
+###  Middleware chaining (View wrapping)
+Middleware গুলো এরকম কাজ করে:
+
+```python
+# middlewares = ["middleware1", "middleware2", "middleware3"]
+final_view = middleware1(
+                  middleware2(
+                      middleware3(
+                          original_view
+                      )
+                  )
+              )
+```
+
+এখানে   “server run হলে view = middleware(view)”
+
+### Decorator ব্যবহার করলে কী হয়?
+
+```python
+@my_decorator
+def my_view(request):
+    ...
+
+```
+➡️ Python internally করে:
+
+```python
+my_view = my_decorator(my_view)
+```
+
+
+### দুইটায় একসাথে  use  করলে (middleware,decoretor)
+
+```python
+# middlewares = ["middleware1", "middleware2", "middleware3"]
+# @mydecorator
+# def original_view;
+
+final_view = middleware1(
+                  middleware2(
+                      middleware3(
+                          my_decorator(original_view)
+                      )
+                  )
+              )
+```
+
+#### 🔄 Execution Order (console output):
+
+```pgsql
+
+middleware1 before view
+decorator before view
+Inside view
+decorator after view
+middleware1 after view
+
+
+```
+
+
+| বিষয়                          | Summary                                                   |
+| ----------------------------- | --------------------------------------------------------- |
+| **Middleware**                | Request/Response এর মাঝখানে বসে কাজ করে; সব view-তে চালায় |
+| **Decorator**                 | View-এর আগে/পরে আলাদা কাজ করে; শুধু ওই view-তেই           |
+| **Function-based Middleware** | Simple function যা request নিয়ে response ফেরত দেয়         |
+| **Class-based Middleware**    | Full control দেয়, Django এর নতুন স্ট্যান্ডার্ড            |
+| **Custom Decorator**          | View এর আগে/পরে নিজস্ব logic চালায়                        |
+
+
+---
+##  `Middleware is actually a special kind of decorator.`
+
+
+### ✅ Part 3 : Decorator ও Permission based view
+
+#### 🔹 ১. Decorator কী?
+`Decorator` হলো Python-এর এক ধরনের ফাংশন যা অন্য একটি ফাংশন বা ভিউ-কে modify বা enhance করতে ব্যবহৃত হয়।
+
+Django-তে ব্যবহৃত common decorators:
+
+- `@login_required`
+- `@permission_required`
+- `@user_passes_test`
+
+---
+
+#### 🔹 ২. কেন Decorator ব্যবহার করি?
+✅ View কে protected করতে
+✅ কোন ভিউতে শুধু logged-in user access করতে পারবে তা নির্ধারণ করতে
+✅ Custom condition apply করতে (যেমন: শুধু staff user, শুধু superuser)
+
+---
+
+## 🔹 ৩. `@login_required` ব্যবহার
+
+#### ✅ উদ্দেশ্য:
+যদি user লগ ইন না করে থাকে, তাহলে তাকে login পেজে redirect করবে।
+
+#### ✅ ব্যবহার:
+```python
+from django.contrib.auth.decorators import login_required
+@login_required(login_url='/accounts/login/')
+def dashboard(request):
+    return render(request, 'dashboard.html')
+```
+
+#### 🔹 ৪. @permission_required ব্যবহার
+
+#### ✅ উদ্দেশ্য:
+
+User-এর নির্দিষ্ট permission আছে কিনা তা যাচাই করে। না থাকলে 403 Forbidden দিবে।
+
+#### ✅ ব্যবহার:
+
+```python
+from django.contrib.auth.decorators import permission_required
+
+@permission_required('app_label.permission_codename', raise_exception=True)
+def my_view(request):
+    return render(request, 'secure_page.html')
+
+```
+
+🔍 বুঝে নেন:
+
+- 'app_label.permission_codename' = eg: 'products.add_product'
+
+- raise_exception=True দিলে login না থাকা বা permission না থাকলে 403 দিবে।
+
+#### 🔹 ৫. @user_passes_test দিয়ে Custom Check
+
+#### ✅ Example:
+
+```python
+from django.contrib.auth.decorators import user_passes_test
+
+def is_admin(user):
+    return user.is_superuser
+
+@user_passes_test(is_admin)
+def admin_dashboard(request):
+    return render(request, 'admin.html')
+```
+
+#### 🔹  ৬. Model Permission নাম গুলো কীভাবে তৈরি হয়?
+
+- Model: Product
+
+| কাজ            | Permission Codename |
+| -------------- | ------------------- |
+| Add product    | `add_product`       |
+| Change product | `change_product`    |
+| Delete product | `delete_product`    |
+| View product   | `view_product`      |
+
+
+Format: 'app_label.codename'
+
+
+#### 🔹 ৭. Permission Add করার নিয়ম (admin panel থেকে)
+Admin panel → User → Permissions → ✅ Select required permissions → Save
+
+🧠 Bonus: Custom Permission তৈরি (Model Meta ক্লাসে)
+
+```
+class Product(models.Model):
+    name = models.CharField(max_length=100)
+
+    class Meta:
+        permissions = [
+            ("can_publish", "Can Publish Product"),
+        ]
+
+```
+
+####🔹 ৮. Function-based View (FBV) vs Class-based View (CBV) এ Decorator
+##### ✅ CBV এ login_required ব্যবহার:
+```python
+from django.utils.decorators import method_decorator
+from django.contrib.auth.decorators import login_required
+
+@method_decorator(login_required, name='dispatch')
+class DashboardView(View):
+    def get(self, request):
+        return render(request, 'dashboard.html')
+```
+
+| Decorator              | কাজ                                           |
+| ---------------------- | --------------------------------------------- |
+| `@login_required`      | Login ছাড়া ভিউ access করতে দিবে না            |
+| `@permission_required` | নির্দিষ্ট permission ছাড়া view access দিবে না |
+| `@user_passes_test`    | Custom logic check                            |
+| Custom Decorator       | নিজের মতো করে কোন logic enforce করা           |
+
+
+
+
