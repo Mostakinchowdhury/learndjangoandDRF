@@ -2579,7 +2579,7 @@ class Product(models.Model):
 
 ```
 
-####🔹 ৮. Function-based View (FBV) vs Class-based View (CBV) এ Decorator
+#### 🔹 ৮. Function-based View (FBV) vs Class-based View (CBV) এ Decorator
 ##### ✅ CBV এ login_required ব্যবহার:
 ```python
 from django.utils.decorators import method_decorator
