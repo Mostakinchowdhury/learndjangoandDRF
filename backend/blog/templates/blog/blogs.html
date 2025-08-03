@@ -1,0 +1,19 @@
+{% extends "./index.html" %} {% block title %} Blogs page {% endblock title %} {% block content %}
+<a href="{% url 'home:blog:createblogview' %}">create blogs</a>
+<div class="container p-4">
+  {% for blog in blogs %}
+  <div class="item p-2">
+    {% if blog.blog_owner.profile_image %}
+    <img src="{{blog.blog_owner.profile_image.url}}" /> {% endif %}{{ blog.blog_owner.username }}
+    upload on {{blog.blog_upload_time}}
+    <div class="container">{{blog.blog_text}}</div>
+    <div class="container p-2">
+      {% if blog.blog_img %}
+      <img src="{{blog.blog_img.url}}" alt="blog_img" />
+      {% endif %}
+    </div>
+    <a href="{% url 'home:blog:updateblogview' pk=blog.id %}" class="btn btn-info">update</a>
+  </div>
+  {% endfor %}
+</div>
+{% endblock content %}

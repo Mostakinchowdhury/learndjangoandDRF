@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>{{ user.username }} এর প্রোফাইল</title>
+  </head>
+  <body>
+    <h1>প্রোফাইল পেজ</h1>
+    <p><strong>নাম:</strong> {{ user.get_full_name }}</p>
+    <p><strong>ইমেইল:</strong> {{ user.email }}</p>
+    <p><strong>ইউজারনেম:</strong> {{ user.username }}</p>
+    {% if user.profile_image %}
+    <img src="{{ user.profile_image.url }}" alt="Profile Image" />
+    {% endif %}
+    <!-- প্রয়োজনমতো আরও ফিল্ড যোগ করতে পারো -->
+
+    <div style="border: 1px solid #ccc; padding: 10px; background: #f9f9f9; position: relative">
+      <h3>Quick Tips</h3>
+      <pre id="handnote-text" style="white-space: pre-wrap; word-wrap: break-word">
+1. প্রোফাইল পেজ শুধুমাত্র লগইন করা ইউজারের জন্য।
+2. request.user দিয়ে সহজেই ইউজারের ডাটা পাওয়া যায়।
+3. @login_required ডেকোরেটর ইউজারকে লগইন করাতে বাধ্য করে।
+4. user.get_full_name() নাম দেখানোর জন্য ব্যবহৃত হয়।
+5. ইমেইল, ইউজারনেম সব প্রপার্টি পাওয়া যায় request.user থেকে।
+</pre
+      >
+      <button
+        id="copy-btn"
+        style="position: absolute; top: 10px; right: 10px; padding: 4px 10px; cursor: pointer"
+      >
+        Copy
+      </button>
+    </div>
+
+    <script>
+      document.getElementById('copy-btn').addEventListener('click', function () {
+        const text = document.getElementById('handnote-text').innerText
+        navigator.clipboard
+          .writeText(text)
+          .then(() => {
+            alert('Handnote copied!')
+          })
+          .catch(() => {
+            alert('Copy failed, please copy manually.')
+          })
+      })
+    </script>
+  </body>
+</html>

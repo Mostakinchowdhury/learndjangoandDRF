@@ -1,0 +1,38 @@
+<form method="POST" action="">
+  {% csrf_token %}
+
+  <div style="background-color: yellow">
+    {{ form.username.label_tag }}
+    {{ form.username }}
+    {% for error in form.username.errors %}
+      <p style="color:red;">{{ error }}</p>
+    {% endfor %}
+  </div>
+
+  <div style="background-color: green">
+    {{ form.password.label_tag }}
+    {{ form.password }}
+    {% for error in form.password.errors %}
+      <p style="color:red;">{{ error }}</p>
+    {% endfor %}
+  </div>
+
+  <div style="background-color: blue">
+    {{ form.passwordsecond.label_tag }}
+    {{ form.passwordsecond }}
+    {% for error in form.passwordsecond.errors %}
+      <p style="color:red;">{{ error }}</p>
+    {% endfor %}
+  </div>
+
+  {% if form.non_field_errors %}
+  <h2 style="color: bisque;">form wide error in here</h2>
+    <ul>
+      {% for error in form.non_field_errors %}
+        <li style="color: red;">{{ error }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <button type="submit">Submit</button>
+</form>

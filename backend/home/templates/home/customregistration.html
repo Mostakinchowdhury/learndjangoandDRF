@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login page</title>
+  </head>
+  <body>
+    <form action="" method="post" autocomplete="off" enctype="multipart/form-data">
+      {% csrf_token %} {{form.as_p}}
+      <button type="submit">registration</button>
+    </form>
+
+    {% if form.errors %} {% for msg in form.errors %}
+    <p style="color: red">{{ msg }}</p>
+    {% endfor %} {% endif %}
+
+    <a href="{% url 'home:login' %}">already user</a>
+    <div style="color: red; background-color: #fff">
+      {% if form.non_field_errors %} {% for msg in form.non_field_errors %}
+      <p style="color: red">{{ msg }}</p>
+      {% endfor %} {% endif %}
+    </div>
+  </body>
+</html>

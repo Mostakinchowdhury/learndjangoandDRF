@@ -1,0 +1,33 @@
+{% extends "./index.html" %} {% block title %} profile page {% endblock title %} {% block content %}
+<ul>
+  {% if user.profile_image %}
+  <li><img src="{{user.profile_image.url}}" /></li>
+  {% endif %}
+  <li>Name:{{user.username}}</li>
+  <li>email:{{user.email}}</li>
+  <li>phone_num:{{user.phone_num}}</li>
+  <li>country_name:{{user.country_name}}</li>
+  <p>profile_image</p>
+  <li>bio:{{user.bio}}</li>
+  <li>gender:{{user.gender}}</li>
+  <li>
+    your total posts:
+    <p>{{totalpost}}</p>
+  </li>
+  <div class="container p-4">
+    {% for rp in recentpost %}
+    <div class="container p-2">
+      <div class="container">{{rp.blog_text}}</div>
+      <div class="container p-2">
+        {% if rp.blog_img %}
+        <img src="{{rp.blog_img.url}}" alt="blog_img" />
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</ul>
+<button class="btn btn-warning">
+  <a href="{% url 'home:logout' %}">Logout</a>
+</button>
+{% endblock content %}

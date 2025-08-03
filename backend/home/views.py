@@ -3,12 +3,19 @@ from django.http import HttpResponse,JsonResponse
 from django.urls import reverse
 from django.contrib.auth import  urls
 from .models  import Products_detail
-from .forms import Productform
+from .forms import *
+from django.contrib.auth import get_user_model
 from django.contrib import messages
+from .forms import customuserform
+from django.contrib.auth import login,logout,authenticate
+from django.contrib.auth.decorators import login_required,user_passes_test
+from .middlewares import mydecorate
 # from django.core import mail
+User=get_user_model()
 
+@mydecorate
 def home(request):
-    return HttpResponse("This is the home page")
+    return render(request,"home/home.html")
 
 def about(request, num):
     return render(request, "home/about.html", {"num": num})
@@ -74,4 +81,60 @@ def deleteform(request, pk):
     ins.delete()
     messages.success(request, "✅ Product Deleted Successfully.")
     return redirect('home:productsucces')
+
+def customform(request):
+    if request.method=="POST":
+        myform=Myform(request.POST)
+        if myform.is_valid():
+            messages.success(request,"✅validated user input")
+            return redirect("home:productsucces")
+        else:
+            return render(request,"home/customform.html",{"form":myform})
+    else:
+        form=Myform()
+        return render(request,"home/customform.html",{"form":form})
+
+@user_passes_test(lambda u:not u.is_authenticated,login_url="home:dashboard")
+def registrationview(request):
+    if request.method=="POST":
+            form=customuserform(request.POST,request.FILES)
+            if form.is_valid():
+                user=form.save()
+                login(request,user)
+                return redirect("home:profile")
+            else:
+              return render(request,'home/customregistration.html',{"form":form})
+    else:
+        form=customuserform()
+        return render(request,'home/customregistration.html',{"form":form})
+
+@user_passes_test(lambda u:not u.is_authenticated,login_url="home:dashboard")
+def loginview(request):
+    if request.method=="POST":
+        username=request.POST["username"]
+        password=request.POST["password"]
+        user=authenticate(request,username=username,password=password)
+        if user != None:
+           login(request,user)
+           messages.success(request,"✅ success to login")
+           return redirect("home:dashboard")
+        else:
+            messages.error(request,"🚫 sorry fail to log in information doesn't match")
+    return render(request,"home/login.html")
+
+def logoutview(request):
+    logout(request)
+    return redirect("home:login")
+@login_required(login_url="home:login")
+def dashboardview(request):
+    return render(request,"home/dashboard.html")
+
+@login_required(login_url="home:login")
+def profile_view(request):
+    user=request.user
+    context = {
+        'user': user,
+    }
+    return render(request,"home/profile.html",context)
+
 

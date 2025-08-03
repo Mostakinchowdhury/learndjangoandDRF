@@ -1,0 +1,37 @@
+{% extends "./index.html" %}
+
+{% block title %}
+  Blog {{ blog.id }}
+{% endblock title %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="item p-3 border rounded shadow-sm">
+    <!-- Author Info -->
+    <div class="d-flex align-items-center mb-2">
+      <img src="{{ blog.blog_owner.profile_image.url }}" alt="Profile Image" width="40" height="40" class="rounded-circle me-2">
+      <strong>{{ blog.blog_owner.username }}</strong>
+      <small class="text-muted ms-2">uploaded on {{ blog.blog_upload_time|date:"F j, Y, g:i a" }}</small>
+    </div>
+
+    <!-- Blog Text -->
+    <div class="mt-3">
+      <p>{{ blog.blog_text }}</p>
+    </div>
+
+    <!-- Blog Image -->
+    {% if blog.blog_img %}
+    <div class="mt-3">
+      <img src="{{ blog.blog_img.url }}" alt="blog_img" class="img-fluid rounded">
+    </div>
+    {% endif %}
+
+    <!-- Update Button (If Owner) -->
+    {% if user == blog.blog_owner %}
+    <div class="mt-3">
+      <a href="{% url 'home:blog:updateblogview' pk=blog.id %}" class="btn btn-info">Update</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock content %}

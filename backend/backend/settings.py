@@ -32,14 +32,17 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    "home",
     'grappelli',
+    'django_extensions',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    "home",
+    "blog",
+
 ]
 
 MIDDLEWARE = [
@@ -50,6 +53,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "home.middlewares.Mymiddleware",
+    "home.middlewares.funcmiddleware",
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -74,6 +79,11 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+
+AUTH_USER_MODEL = 'home.CustomUser'
+
+AUTHENTICATION_BACKENDS = ['home.backends.EmailBackend']
+
 
 DATABASES = {
     'default': {
@@ -143,4 +153,7 @@ STATICFILES_DIRS = [
 ]
 TIME_ZONE = 'Asia/Dhaka'
 USE_TZ = True
-
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'

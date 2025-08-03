@@ -1,8 +1,12 @@
 from .models import Products_detail,Tag,Order,Setting
 from django.contrib import admin
-from django.contrib.auth.models import User
 from django.contrib.auth.admin import UserAdmin
-admin.site.unregister(User)
+from django.contrib.auth import get_user_model
+User=get_user_model()
+try:
+    admin.site.unregister(User)
+except admin.sites.NotRegistered:
+    pass
 @admin.register(Products_detail)
 class Productadmin(admin.ModelAdmin):
     list_display = (
@@ -49,6 +53,11 @@ class tag_admin(admin.ModelAdmin):
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
     list_display = (
+        "email",
+        "gender",
+        "country_name",
+        "phone_num",
+        "profile_image",
         'username',
         'get_language',
         'order_count',

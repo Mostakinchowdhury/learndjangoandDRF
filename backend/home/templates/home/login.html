@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login page</title>
+  </head>
+  <body>
+    <form action="" method="post">
+      {% csrf_token %}
+      <input type="email" name="username" id="username" placeholder="Email" autocomplete="off" />
+      <input
+        type="password"
+        name="password"
+        id="password"
+        placeholder="password"
+        autocomplete="new-password"
+      />
+      <button type="submit">login</button>
+    </form>
+    <a href="{% url 'home:registration' %}">create user</a>
+    <div style="color: red; background-color: #fff">
+      {% for msg in messages %}
+      <p style="color: red">🚫 {{msg}}</p>
+      {% empty %}
+      <p style="color: green">✅ nothing any error</p>
+      {% endfor %}
+    </div>
+  </body>
+</html>
