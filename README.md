@@ -1877,23 +1877,24 @@ def login_view(request):
 
 ---
 
-
 # ✅ Django Custom User Model Handnote (Day 08)
 
 ## 🔰 Custom User Model কেন ব্যবহার করব?
 
-Django-এর default user model অনেক সময় আমাদের প্রয়োজন অনুযায়ী field (যেমন: phone\_number, profile\_image ইত্যাদি) রাখার সুযোগ দেয় না। তাই আমরা custom user model ব্যবহার করি যাতে user model নিজের মতো modify করা যায়।
+Django-এর default user model অনেক সময় আমাদের প্রয়োজন অনুযায়ী field (যেমন: phone_number,
+profile_image ইত্যাদি) রাখার সুযোগ দেয় না। তাই আমরা custom user model ব্যবহার করি যাতে user model
+নিজের মতো modify করা যায়।
 
 ---
 
 ## 🔹 AbstractUser vs AbstractBaseUser
 
-| Topic           | AbstractUser                           | AbstractBaseUser                  |
-| --------------- | -------------------------------------- | --------------------------------- |
-| Inherits        | Django's built-in User model           | Only Base user class              |
-| Fields          | Default fields (username, email, etc.) | Must define all fields manually   |
-| Easier to use?  | ✅ হ্যাঁ (prebuilt features পেয়ে যাব)   | ❌ না (সব manually define করতে হয়) |
-| Password System | Built-in আছে                           | নিজে implement করতে হয়            |
+| Topic           | AbstractUser                           | AbstractBaseUser                   |
+| --------------- | -------------------------------------- | ---------------------------------- |
+| Inherits        | Django's built-in User model           | Only Base user class               |
+| Fields          | Default fields (username, email, etc.) | Must define all fields manually    |
+| Easier to use?  | ✅ হ্যাঁ (prebuilt features পেয়ে যাব)  | ❌ না (সব manually define করতে হয়) |
+| Password System | Built-in আছে                           | নিজে implement করতে হয়             |
 
 ---
 
@@ -1944,14 +1945,15 @@ AUTH_USER_MODEL = 'yourapp.CustomUser'
 
 ---
 
-
 ## Django Profile Page
 
 ````markdown
 # Django Profile Page তৈরির গাইড (request.user ব্যবহার করে)
 
 ## ভূমিকা
-এই গাইডে শেখানো হবে কিভাবে Django এর built-in `request.user` অবজেক্ট ব্যবহার করে একজন লগইনকৃত ইউজারের প্রোফাইল পেজ তৈরি করা যায়।
+
+এই গাইডে শেখানো হবে কিভাবে Django এর built-in `request.user` অবজেক্ট ব্যবহার করে একজন লগইনকৃত
+ইউজারের প্রোফাইল পেজ তৈরি করা যায়।
 
 ---
 
@@ -1966,6 +1968,7 @@ from . import views
 urlpatterns = [
     path('profile/', views.profile_view, name='profile'),
 ]
+```
 ````
 
 ---
@@ -1996,17 +1999,17 @@ def profile_view(request):
 ```html
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8" />
     <title>{{ user.username }} এর প্রোফাইল</title>
-</head>
-<body>
+  </head>
+  <body>
     <h1>প্রোফাইল পেজ</h1>
     <p><strong>নাম:</strong> {{ user.get_full_name }}</p>
     <p><strong>ইমেইল:</strong> {{ user.email }}</p>
     <p><strong>ইউজারনেম:</strong> {{ user.username }}</p>
     <!-- প্রয়োজনমতো আরও ফিল্ড যোগ করতে পারো -->
-</body>
+  </body>
 </html>
 ```
 
@@ -2014,39 +2017,48 @@ def profile_view(request):
 
 ## ৪. Authentication Setup
 
-* নিশ্চিত করো তোমার settings.py-তে `LOGIN_URL` সঠিক আছে (যেমন: `/accounts/login/`)
-* লগইন ছাড়া কেউ প্রোফাইল পেজে যেতে না পারে এজন্য `@login_required` ডেকোরেটর ব্যবহার করা হয়েছে।
+- নিশ্চিত করো তোমার settings.py-তে `LOGIN_URL` সঠিক আছে (যেমন: `/accounts/login/`)
+- লগইন ছাড়া কেউ প্রোফাইল পেজে যেতে না পারে এজন্য `@login_required` ডেকোরেটর ব্যবহার করা হয়েছে।
 
 ---
 
 ### হ্যান্ডনোট (Handnote)
+
 ```html
 <div style="border:1px solid #ccc; padding:10px; background:#f9f9f9; position: relative;">
-<h3>Quick Tips</h3>
-<pre id="handnote-text" style="white-space: pre-wrap; word-wrap: break-word;">
+  <h3>Quick Tips</h3>
+  <pre id="handnote-text" style="white-space: pre-wrap; word-wrap: break-word;">
 1. প্রোফাইল পেজ শুধুমাত্র লগইন করা ইউজারের জন্য।
 2. request.user দিয়ে সহজেই ইউজারের ডাটা পাওয়া যায়।
 3. @login_required ডেকোরেটর ইউজারকে লগইন করাতে বাধ্য করে।
 4. user.get_full_name() নাম দেখানোর জন্য ব্যবহৃত হয়।
 5. ইমেইল, ইউজারনেম সব প্রপার্টি পাওয়া যায় request.user থেকে।
-</pre>
-<button id="copy-btn" style="position: absolute; top: 10px; right: 10px; padding: 4px 10px; cursor: pointer;">Copy</button>
+</pre
+  >
+  <button
+    id="copy-btn"
+    style="position: absolute; top: 10px; right: 10px; padding: 4px 10px; cursor: pointer;"
+  >
+    Copy
+  </button>
 </div>
 
 <script>
-  document.getElementById('copy-btn').addEventListener('click', function() {
-    const text = document.getElementById('handnote-text').innerText;
-    navigator.clipboard.writeText(text).then(() => {
-      alert('Handnote copied!');
-    }).catch(() => {
-      alert('Copy failed, please copy manually.');
-    });
-  });
+  document.getElementById('copy-btn').addEventListener('click', function () {
+    const text = document.getElementById('handnote-text').innerText
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        alert('Handnote copied!')
+      })
+      .catch(() => {
+        alert('Copy failed, please copy manually.')
+      })
+  })
 </script>
 ```
 
 ---
-
 
 ## 🔹 Model.objects.create vs Model()
 
@@ -2057,44 +2069,45 @@ def profile_view(request):
 
 ---
 
-## 🔹 set\_password() কোথা থেকে আসে?
+## 🔹 set_password() কোথা থেকে আসে?
 
-* এটি `AbstractBaseUser` এর instance method।
-* এর মাধ্যমে password hashed করে save করা হয়।
+- এটি `AbstractBaseUser` এর instance method।
+- এর মাধ্যমে password hashed করে save করা হয়।
 
 ---
 
-## 🔹 extra\_fields কাজ কী করে?
+## 🔹 extra_fields কাজ কী করে?
 
 ```python
 extra_fields = {"is_superuser": True, "is_staff": True}
 ```
 
-* `user = self.model(username, email, **extra_fields)` → এর মানে:
+- `user = self.model(username, email, **extra_fields)` → এর মানে:
 
   ```python
   user = self.model(username=username, email=email, is_superuser=True, is_staff=True)
   ```
-* এটি dictionary spread করে additional fields assign করে।
-* Python এ `**kwargs` → keyword arguments dict আকারে নেয়।
+
+- এটি dictionary spread করে additional fields assign করে।
+- Python এ `**kwargs` → keyword arguments dict আকারে নেয়।
 
 ---
 
-## 🔹 extra\_fields.setdefault()
+## 🔹 extra_fields.setdefault()
 
-* Python dictionary এর built-in method
+- Python dictionary এর built-in method
 
 ```python
 extra_fields.setdefault('is_superuser', True)
 ```
 
-* যদি key `is_superuser` না থাকে তবে `True` set করবে।
+- যদি key `is_superuser` না থাকে তবে `True` set করবে।
 
 ---
 
 ## 🔹 ValueError কোথা থেকে আসে?
 
-* Python built-in exception। Import করার দরকার নাই।
+- Python built-in exception। Import করার দরকার নাই।
 
 ```python
 raise ValueError("Users must have an email address")
@@ -2104,16 +2117,16 @@ raise ValueError("Users must have an email address")
 
 ## 🔹 model manager / object manager কি?
 
-* প্রতিটি Model এর সাথে `objects` নামে default manager থাকে:
+- প্রতিটি Model এর সাথে `objects` নামে default manager থাকে:
 
 ```python
 User.objects.all()
 User.objects.filter()
 ```
 
-* আমরা চাইলে Custom Manager তৈরি করে `.objects` override করতে পারি।
-* Custom Query behaviors define করতে পারি।
-* Manager override করার উদাহরণ:
+- আমরা চাইলে Custom Manager তৈরি করে `.objects` override করতে পারি।
+- Custom Query behaviors define করতে পারি।
+- Manager override করার উদাহরণ:
 
 ```python
 class ActiveUserManager(models.Manager):
@@ -2125,17 +2138,18 @@ class ActiveUserManager(models.Manager):
 
 ## 🔹 UserCreationForm extend করার কারণ?
 
-* `UserCreationForm` Django এর built-in form যেটা automatic কিছু validation (`clean_username`, `clean_password2`, etc) provide করে।
-* Custom User Form তৈরি করার সময় এটি inherit করলে default validation system active থাকে।
+- `UserCreationForm` Django এর built-in form যেটা automatic কিছু validation (`clean_username`,
+  `clean_password2`, etc) provide করে।
+- Custom User Form তৈরি করার সময় এটি inherit করলে default validation system active থাকে।
 
 ---
 
-## 🔹 USERNAME\_FIELD vs REQUIRED\_FIELDS
+## 🔹 USERNAME_FIELD vs REQUIRED_FIELDS
 
-| Field            | কাজ                                                      |
-| ---------------- | -------------------------------------------------------- |
-| USERNAME\_FIELD  | কোন field দিয়ে user authenticate হবে (default: username) |
-| REQUIRED\_FIELDS | createsuperuser চলাকালে যে fields চাই তা define করা      |
+| Field           | কাজ                                                      |
+| --------------- | -------------------------------------------------------- |
+| USERNAME_FIELD  | কোন field দিয়ে user authenticate হবে (default: username) |
+| REQUIRED_FIELDS | createsuperuser চলাকালে যে fields চাই তা define করা      |
 
 ```python
 USERNAME_FIELD = 'email'
@@ -2156,16 +2170,15 @@ AUTHENTICATION_BACKENDS = [
 
 ### ✅ আপনি কি বুঝেছেন?
 
-* CustomUser কেন দরকার
-* Manager কি ও কেন override করতে হয়
-* Model vs Model.objects.create পার্থক্য
-* set\_password এর পেছনের কাহিনী
-* extra\_fields কীভাবে কাজ করে
-* CustomUserManager কি ও কেন দরকার
-* AUTH\_USER\_MODEL কোথায় সেট করতে হয়
+- CustomUser কেন দরকার
+- Manager কি ও কেন override করতে হয়
+- Model vs Model.objects.create পার্থক্য
+- set_password এর পেছনের কাহিনী
+- extra_fields কীভাবে কাজ করে
+- CustomUserManager কি ও কেন দরকার
+- AUTH_USER_MODEL কোথায় সেট করতে হয়
 
 ---
-
 
 ---
 
@@ -2174,11 +2187,13 @@ AUTHENTICATION_BACKENDS = [
 - Custom middleware কী এবং কিভাবে বানানো যায়
 - Custom Decorator কী এবং কিভাবে বানানো যায়
 - Decorator ও Permission based view
+
 ### ✅ Part 1: Middleware
 
 #### 🧠 Middleware কী?
 
-Middleware হলো Django-এর এমন এক সিস্টেম যেখানে তুমি HTTP request এবং response এর মাঝখানে **extra কাজ (logic)** করতে পারো।
+Middleware হলো Django-এর এমন এক সিস্টেম যেখানে তুমি HTTP request এবং response এর মাঝখানে **extra কাজ
+(logic)** করতে পারো।
 
 > 🎯 মনে রাখো: Middleware = Request & Response এর মাঝখানে দাঁড়িয়ে নিয়ন্ত্রণ করা।
 
@@ -2236,7 +2251,8 @@ def my_middleware(get_response):
 
 #### ⚠️ যদি `get_response(request)` না দিতাম?
 
-View কখনোই execute হতো না। তোমার middleware শুধু request পেত, কিন্তু response রিটার্ন করতো না — Server হ্যাং হয়ে যেত।
+View কখনোই execute হতো না। তোমার middleware শুধু request পেত, কিন্তু response রিটার্ন করতো না —
+Server হ্যাং হয়ে যেত।
 
 ---
 
@@ -2282,8 +2298,11 @@ class MyMiddleware:
 
 #### ❓ কেন `__call__()` লাগে?
 
-Django middleware instance কে function-এর মতো call করে: `middleware_instance(request)`
-`__call__` না দিলে, middleware request handle করতে পারতো না।👉 Middleware class এর __call__ হল python  এর বিল্ড ইন একটি special dunder method যেটা class এর instance কে function-এর মতো call করার ক্ষমতা দেয়।instance কে ফাংশনের মতো call করলে __call__() method execute হয়। যা একটা ভিউ function রিটার্ন করে ডেকোরেটর যেমন করে কারণ আমরা জানি যে middleware এক ধরণের বিশেষ ডেকোরেটর যার স্পেশাল কিছু behave/power  আছে।
+Django middleware instance কে function-এর মতো call করে: `middleware_instance(request)` `__call__` না
+দিলে, middleware request handle করতে পারতো না।👉 Middleware class এর **call** হল python এর বিল্ড ইন
+একটি special dunder method যেটা class এর instance কে function-এর মতো call করার ক্ষমতা দেয়।instance
+কে ফাংশনের মতো call করলে **call**() method execute হয়। যা একটা ভিউ function রিটার্ন করে ডেকোরেটর
+যেমন করে কারণ আমরা জানি যে middleware এক ধরণের বিশেষ ডেকোরেটর যার স্পেশাল কিছু behave/power আছে।
 
 ---
 
@@ -2307,7 +2326,8 @@ Class-based middleware-এ আরও কিছু hook থাকে:
 | `process_exception()`         | যদি exception হয়                 | error handle                 |
 | `process_template_response()` | template response modify         |                              |
 
-> ⚠️ এগুলো শুধু old style middleware-এ use হয়, Django 1.10+ এ নতুন style হচ্ছে `__init__`, `__call__`
+> ⚠️ এগুলো শুধু old style middleware-এ use হয়, Django 1.10+ এ নতুন style হচ্ছে `__init__`,
+> `__call__`
 
 ---
 
@@ -2317,16 +2337,17 @@ Class-based middleware-এ আরও কিছু hook থাকে:
 
 ## 🧠 Decorator কী?
 
-Decorator হচ্ছে Python-এর একটা ফিচার, যা **function-এর উপরে আরেকটা function "লেপে" দেয়**, যেন কিছু অতিরিক্ত কাজ হয়।
+Decorator হচ্ছে Python-এর একটা ফিচার, যা **function-এর উপরে আরেকটা function "লেপে" দেয়**, যেন কিছু
+অতিরিক্ত কাজ হয়।
 
 ---
 
 ## 🎯 Django-তে কেন Decorator দরকার?
 
-* একটা view-র আগে/পরে কাজ করতে
-* User login check করতে
-* Permission check করতে
-* Custom logic add করতে
+- একটা view-র আগে/পরে কাজ করতে
+- User login check করতে
+- Permission check করতে
+- Custom logic add করতে
 
 ---
 
@@ -2379,7 +2400,8 @@ def my_view(request):
 | `my_decorator()` | যখন Python তোমার view কে decorate করে (server start-এর সময় একবার) |
 | `wrapper()`      | যখন user request করে এবং decorated view call হয়                   |
 
-####  Server start হলে
+#### Server start হলে
+
 - তোমার view কে decorate করে (server start-এর সময় একবার)
 - Django তোমার সব middleware read করে (settings.py → MIDDLEWARE list থেকে)
 
@@ -2387,9 +2409,7 @@ def my_view(request):
 
 - এর মানে প্রতিটি middleware get_response কে wrap করে নতুন একটা callable return করে।
 
-
 ➡️ সব middleware একটার ভেতরে আরেকটা nested হয়।
-
 
 ### 🌀 Middleware vs Decorator: পার্থক্য
 
@@ -2401,9 +2421,8 @@ def my_view(request):
 | Request/Response handle করে | হ্যাঁ                                | না, শুধুমাত্র view-এর আগে/পরে          |
 | Initialization সময়          | Django চলার সময়                      | Python runtime-এ (function define সময়) |
 
+### Middleware chaining (View wrapping)
 
-
-###  Middleware chaining (View wrapping)
 Middleware গুলো এরকম কাজ করে:
 
 ```python
@@ -2417,7 +2436,7 @@ final_view = middleware1(
               )
 ```
 
-এখানে   “server run হলে view = middleware(view)”
+এখানে “server run হলে view = middleware(view)”
 
 ### Decorator ব্যবহার করলে কী হয়?
 
@@ -2427,14 +2446,14 @@ def my_view(request):
     ...
 
 ```
+
 ➡️ Python internally করে:
 
 ```python
 my_view = my_decorator(my_view)
 ```
 
-
-### দুইটায় একসাথে  use  করলে (middleware,decoretor)
+### দুইটায় একসাথে use করলে (middleware,decoretor)
 
 ```python
 # middlewares = ["middleware1", "middleware2", "middleware3"]
@@ -2463,7 +2482,6 @@ middleware1 after view
 
 ```
 
-
 | বিষয়                          | Summary                                                   |
 | ----------------------------- | --------------------------------------------------------- |
 | **Middleware**                | Request/Response এর মাঝখানে বসে কাজ করে; সব view-তে চালায় |
@@ -2472,15 +2490,16 @@ middleware1 after view
 | **Class-based Middleware**    | Full control দেয়, Django এর নতুন স্ট্যান্ডার্ড            |
 | **Custom Decorator**          | View এর আগে/পরে নিজস্ব logic চালায়                        |
 
-
 ---
-##  `Middleware is actually a special kind of decorator.`
 
+## `Middleware is actually a special kind of decorator.`
 
 ### ✅ Part 3 : Decorator ও Permission based view
 
 #### 🔹 ১. Decorator কী?
-`Decorator` হলো Python-এর এক ধরনের ফাংশন যা অন্য একটি ফাংশন বা ভিউ-কে modify বা enhance করতে ব্যবহৃত হয়।
+
+`Decorator` হলো Python-এর এক ধরনের ফাংশন যা অন্য একটি ফাংশন বা ভিউ-কে modify বা enhance করতে ব্যবহৃত
+হয়।
 
 Django-তে ব্যবহৃত common decorators:
 
@@ -2491,18 +2510,20 @@ Django-তে ব্যবহৃত common decorators:
 ---
 
 #### 🔹 ২. কেন Decorator ব্যবহার করি?
-✅ View কে protected করতে
-✅ কোন ভিউতে শুধু logged-in user access করতে পারবে তা নির্ধারণ করতে
-✅ Custom condition apply করতে (যেমন: শুধু staff user, শুধু superuser)
+
+✅ View কে protected করতে ✅ কোন ভিউতে শুধু logged-in user access করতে পারবে তা নির্ধারণ করতে ✅
+Custom condition apply করতে (যেমন: শুধু staff user, শুধু superuser)
 
 ---
 
 ## 🔹 ৩. `@login_required` ব্যবহার
 
 #### ✅ উদ্দেশ্য:
+
 যদি user লগ ইন না করে থাকে, তাহলে তাকে login পেজে redirect করবে।
 
 #### ✅ ব্যবহার:
+
 ```python
 from django.contrib.auth.decorators import login_required
 @login_required(login_url='/accounts/login/')
@@ -2548,7 +2569,7 @@ def admin_dashboard(request):
     return render(request, 'admin.html')
 ```
 
-#### 🔹  ৬. Model Permission নাম গুলো কীভাবে তৈরি হয়?
+#### 🔹 ৬. Model Permission নাম গুলো কীভাবে তৈরি হয়?
 
 - Model: Product
 
@@ -2559,11 +2580,10 @@ def admin_dashboard(request):
 | Delete product | `delete_product`    |
 | View product   | `view_product`      |
 
-
 Format: 'app_label.codename'
 
-
 #### 🔹 ৭. Permission Add করার নিয়ম (admin panel থেকে)
+
 Admin panel → User → Permissions → ✅ Select required permissions → Save
 
 🧠 Bonus: Custom Permission তৈরি (Model Meta ক্লাসে)
@@ -2580,7 +2600,9 @@ class Product(models.Model):
 ```
 
 #### 🔹 ৮. Function-based View (FBV) vs Class-based View (CBV) এ Decorator
+
 ##### ✅ CBV এ login_required ব্যবহার:
+
 ```python
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
@@ -2599,6 +2621,7 @@ class DashboardView(View):
 | Custom Decorator       | নিজের মতো করে কোন logic enforce করা           |
 
 ---
+
 ## ✅ Day 10: blog backend based website by django done
 
 ---
@@ -2621,7 +2644,8 @@ pip install djangorestframework
 
 🔸 কেন করলাম?
 
-> DRF (Django REST Framework) ইনস্টল না করলে আমরা Django দিয়ে API বানাতে পারতাম না। এটা Django এর ওপর বসানো একটা শক্তিশালী extension।
+> DRF (Django REST Framework) ইনস্টল না করলে আমরা Django দিয়ে API বানাতে পারতাম না। এটা Django এর
+> ওপর বসানো একটা শক্তিশালী extension।
 
 ---
 
@@ -2636,7 +2660,9 @@ INSTALLED_APPS = [
 
 🔸 কেন করলাম?
 
-> Django-কে জানাতে হবে যে আমরা DRF ব্যবহার করব। না করলে Django এটা চিনতে পারবে না।by-deafalut  drf একটা app  এর মতো কাজ করে আমরা জানি একটা apps  বানালে তা আমাদের settings.py  তে অ্যাড করতে হয় না হলে সেই app  কে django  চিনতে পারে না তাই আমাদের add করতে হয়েছে।
+> Django-কে জানাতে হবে যে আমরা DRF ব্যবহার করব। না করলে Django এটা চিনতে পারবে না।by-deafalut drf
+> একটা app এর মতো কাজ করে আমরা জানি একটা apps বানালে তা আমাদের settings.py তে অ্যাড করতে হয় না হলে
+> সেই app কে django চিনতে পারে না তাই আমাদের add করতে হয়েছে।
 
 ---
 
@@ -2656,7 +2682,8 @@ class Blog(models.Model):
 
 🔸 কেন করলাম?
 
-> আমরা ডেটা কোথা থেকে আনব? Model মানে হচ্ছে ডেটাবেইসের কাঠামো।এই ডাটাবেস থেকে আমরা ডাটা নিবো  যা api এর maddhome ফ্রন্টএন্ড apps কে পাঠাবো।
+> আমরা ডেটা কোথা থেকে আনব? Model মানে হচ্ছে ডেটাবেইসের কাঠামো।এই ডাটাবেস থেকে আমরা ডাটা নিবো যা api
+> এর maddhome ফ্রন্টএন্ড apps কে পাঠাবো।
 
 ---
 
@@ -2675,7 +2702,12 @@ class BlogSerializer(serializers.ModelSerializer):
 
 🔸 কেন করলাম?
 
-> Model কে JSON এ রূপান্তর করার জন্য serializer দরকার। না করলে API ডেটা পাঠাতে পারবে না। serializer অনেক টা django  এর ফর্ম  এর মতো  ফর্ম যেমন  মডেল অবজেক্ট ফিল্ডস  বা  কাস্টম ফিল্ডস কে টেম্পলেট এ কনভার্ট এন্ড ডাটা ভ্যালিডেশন করে। তেমনি serializer ও মডেল অবজেক্ট ফিল্ডস বা কাস্টম ফিল্ডস কে পাইথন dictionary তে কনভার্ট করে এবং ফিল্ড ভ্যালিডেশন করে। এরপর সেই পাইথন dictionary কে  পরবর্তী ভিউ তে response json  এ কনভার্ট  করে সেই জেসন এর সাথে প্রয়োজনীয় সব মেটা ডাটা হেডার স্টেটাস যুক্ত করে ফ্রন্টএন্ড apps কে পাঠিয়ে দেয়।
+> Model কে JSON এ রূপান্তর করার জন্য serializer দরকার। না করলে API ডেটা পাঠাতে পারবে না। serializer
+> অনেক টা django এর ফর্ম এর মতো ফর্ম যেমন মডেল অবজেক্ট ফিল্ডস বা কাস্টম ফিল্ডস কে টেম্পলেট এ কনভার্ট
+> এন্ড ডাটা ভ্যালিডেশন করে। তেমনি serializer ও মডেল অবজেক্ট ফিল্ডস বা কাস্টম ফিল্ডস কে পাইথন
+> dictionary তে কনভার্ট করে এবং ফিল্ড ভ্যালিডেশন করে। এরপর সেই পাইথন dictionary কে পরবর্তী ভিউ তে
+> response json এ কনভার্ট করে সেই জেসন এর সাথে প্রয়োজনীয় সব মেটা ডাটা হেডার স্টেটাস যুক্ত করে
+> ফ্রন্টএন্ড apps কে পাঠিয়ে দেয়।
 
 ---
 
@@ -2697,12 +2729,19 @@ class BlogListAPIView(APIView):
 
 🔸 কেন করলাম?
 
-> APIView হলো DRF-এর class-based view, যেটা দিয়ে আমরা GET/POST ইত্যাদি method ব্যবহার করতে পারি।যার একটা মেথড আছে  as_view এই মেথড রিকোয়েস্ট এর মেথড (post,get,put,patch,delete) অনুযায়ী apiview  এর view  মেথড এক্সিকিউট করে।APIView নিজেই as_view() মেথড দিয়ে HTTP মেথড (get, post, put, patch, delete) অনুযায়ী ক্লাসের সংশ্লিষ্ট মেথড (get(), post(), put()...) এক্সিকিউট করে। আমরা  viewset এর  ক্ষেত্রে  as_view() class  মেথড কে আর্গুমেন্ট পাস করে বলে দিতে পারি কোন রিকোয়েস্ট মেথড এ কোন ক্লাস  মেথড ভিউ এক্সিকিউট হবে   APIview.as_view({
+> APIView হলো DRF-এর class-based view, যেটা দিয়ে আমরা GET/POST ইত্যাদি method ব্যবহার করতে পারি।যার
+> একটা মেথড আছে as_view এই মেথড রিকোয়েস্ট এর মেথড (post,get,put,patch,delete) অনুযায়ী apiview এর
+> view মেথড এক্সিকিউট করে।APIView নিজেই as_view() মেথড দিয়ে HTTP মেথড (get, post, put, patch,
+> delete) অনুযায়ী ক্লাসের সংশ্লিষ্ট মেথড (get(), post(), put()...) এক্সিকিউট করে। আমরা viewset এর
+> ক্ষেত্রে as_view() class মেথড কে আর্গুমেন্ট পাস করে বলে দিতে পারি কোন রিকোয়েস্ট মেথড এ কোন ক্লাস
+> মেথড ভিউ এক্সিকিউট হবে APIview.as_view({
+
     "get":list,"post":create,"put":update
-})   এই কাজ তা মূলত deafaltrouter() করে urlpatterent  লিস্ট বানায় এটা  viewset ,modelviewset এর বেলায় তবে সেটা apiview এ কাজ  করে  না ।
 
+}) এই কাজ তা মূলত deafaltrouter() করে urlpatterent লিস্ট বানায় এটা viewset ,modelviewset এর বেলায়
+তবে সেটা apiview এ কাজ করে না ।
 
-#### APIview vs  viewset
+#### APIview vs viewset
 
 | বিষয়                   | APIView                           | ViewSet / ModelViewSet                   |
 | ---------------------- | --------------------------------- | ---------------------------------------- |
@@ -2730,7 +2769,7 @@ urlpatterns = [
 
 ---
 
-####  🔹 এখন ব্রাউজারে এই লিংক ভিজিট করো:
+#### 🔹 এখন ব্রাউজারে এই লিংক ভিজিট করো:
 
 ```
 http://127.0.0.1:8000/api/blogs/
@@ -2772,14 +2811,225 @@ class BlogCreateAPIView(APIView):
 
 ### 🧠 উপসংহার:
 
-* Web Page = মানুষের জন্য
-* API = অ্যাপ ও কম্পিউটারের জন্য
-* APIView দিয়ে DRF এ JSON Response পাঠানো যায়
-* Serializer ছাড়া JSON বানানো যেত না,validation করা যেত না
-* URL ছাড়া API এক্সেস করা যেত না
+- Web Page = মানুষের জন্য
+- API = অ্যাপ ও কম্পিউটারের জন্য
+- APIView দিয়ে DRF এ JSON Response পাঠানো যায়
+- Serializer ছাড়া JSON বানানো যেত না,validation করা যেত না
+- URL ছাড়া API এক্সেস করা যেত না
 
 ---
 
+## ✅ Day 12: Serializers (Basic)
 
+এই Handnote টা ৩টা গুরুত্বপূর্ণ Django DRF topic কভার করবে:
 
+- Manual Serializer Class
+- ModelSerializer
+- Serializer Validation
 
+সাথে তুলনামূলক আলোচনা থাকবে Django Forms এর সাথে:
+
+- Forms vs Serializers
+- ModelForm vs ModelSerializer
+
+---
+
+### 1. Manual Serializer Class
+
+#### 🔹 কী?
+
+Manual serializer class হচ্ছে DRF-এর serializer যেটা `serializers.Serializer` থেকে ইনহেরিট করে
+বানানো হয়। এটা একদম Django Form এর মতো কাজ করে, কিন্তু JSON data এর জন্য।
+
+#### ✅ কেন ব্যবহার করবো?
+
+যখন আপনি নিজের মতো করে ফিল্ড, ভ্যালিডেশন কাস্টমাইজ করতে চান এবং Model এর সাথে সরাসরি সম্পর্ক নাই।
+
+#### 🔧 কোড:
+
+```python
+from rest_framework import serializers
+
+class BlogSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=100, label="Blog Title")
+    content = serializers.CharField()
+
+    def validate_title(self, value):
+        if 'django' not in value.lower():
+            raise serializers.ValidationError("Title must contain 'django'")
+        return value
+
+    def validate(self, data):
+        if data['title'] == data['content']:
+            raise serializers.ValidationError("Title and content must be different")
+        return data
+
+# External validator function
+from rest_framework.validators import ValidationError
+
+def no_hello(value):
+    if 'hello' in value.lower():
+        raise ValidationError("'hello' is not allowed")
+
+class SampleSerializer(serializers.Serializer):
+    name = serializers.CharField(validators=[no_hello])
+```
+
+### 🧠 মিল Django Form এর সাথে:
+
+| Manual Serializer                | Django Form                    |
+| -------------------------------- | ------------------------------ |
+| `Serializer` থেকে ইনহেরিট        | `forms.Form` থেকে ইনহেরিট      |
+| ফিল্ড define করতে হয়             | ফিল্ড define করতে হয়           |
+| `.is_valid()`, `.validated_data` | `.is_valid()`, `.cleaned_data` |
+| `.validate_<field>()` method     | `clean_<field>()` method       |
+| `.validate()` method             | `clean()` method               |
+
+### ❌ অমিল:
+
+| Manual Serializer                                              | Django Form                                                                                                                                                                                         |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| JSON Data handle করে                                           | HTML form data handle করে                                                                                                                                                                           |
+| API request/response format                                    | Template rendering and user input                                                                                                                                                                   |
+| `.save()` method নাই                                           | `.save()` method নাই (form এ থাকে শুধু ModelForm এ)                                                                                                                                                 |
+| DRF নিজে validate\_<field>(self,value) এ ফিল্ডের value পাঠায়   | Form এ clean\_<field>() call করার সময় cleaned_data থেকে নিজে cleaned_data[field] avabe নিতে হয়                                                                                                      |
+| DRF নিজেই validate(self,data)-এ সব cleaned/validate data পাঠায় | Django Form এ parent class এর clean() manually call করতে হয় self.cleaned_data dict তৈরি করতে তারপর cleaned_data[field] এভাবে করে যতগুলা দরকার ফিল্ড এর ভ্যালু নিতে হয় json ভ্যালিডেটে এর ক্ষেত্রে । |
+
+---
+
+### 2. ModelSerializer
+
+#### 🔹 কী?
+
+`serializers.ModelSerializer` এমন এক serializer যেটা Django এর Model এর উপর ভিত্তি করে অটো ফিল্ড
+তৈরি করে দেয়।
+
+#### ✅ কেন ব্যবহার করবো?
+
+যখন আপনার ডেটা সরাসরি Model এর সাথে সম্পর্কিত।
+
+#### 🔧 কোড:
+
+```python
+from rest_framework import serializers
+from .models import Blog
+
+# Custom validator
+from rest_framework.validators import ValidationError
+
+def no_forbidden(value):
+    if "forbidden" in value.lower():
+        raise ValidationError("You can't use the word 'forbidden'")
+
+class BlogModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Blog
+        fields = ['title', 'content']
+        extra_kwargs = {
+            'title': {
+                'label': "Blog Title",
+                'validators': [no_forbidden]
+            },
+            'content': {
+                'label': "Content Body"
+            }
+        }
+
+    def validate_title(self, value):
+        if len(value) < 5:
+            raise serializers.ValidationError("Title is too short")
+        return value
+
+    def validate(self, data):
+        if data['title'] == data['content']:
+            raise serializers.ValidationError("Title and content cannot be the same")
+        return data
+```
+
+#### 🧠 মিল ModelForm এর সাথে:
+
+| ModelSerializer             | ModelForm                   |
+| --------------------------- | --------------------------- |
+| Model এর উপর ভিত্তি করে     | Model এর উপর ভিত্তি করে     |
+| `Meta` class ব্যবহার করে    | `Meta` class ব্যবহার করে    |
+| ফিল্ড অটো তৈরি হয়           | ফিল্ড অটো তৈরি হয়           |
+| `.save()` method থাকে       | `.save()` method থাকে       |
+| Validation override করা যায় | Validation override করা যায় |
+
+#### ❌ অমিল:
+
+| ModelSerializer        | ModelForm             |
+| ---------------------- | --------------------- |
+| JSON data process করে  | HTML Form process করে |
+| Template render করে না | Template render করে   |
+| API-based              | Form-based            |
+
+---
+
+### 3. Serializer Validation vs Form Validation
+
+#### 🧩 ফিল্ড-লেভেল Validation:
+
+| Serializer                          | Form                          |
+| ----------------------------------- | ----------------------------- |
+| `validate_<field>()`                | `clean_<field>()`             |
+| Raise `serializers.ValidationError` | Raise `forms.ValidationError` |
+
+#### 🧩 Object-লেভেল Validation:
+
+| Serializer                          | Form                          |
+| ----------------------------------- | ----------------------------- |
+| `validate(self, data)`              | `clean(self)`                 |
+| Raise `serializers.ValidationError` | Raise `forms.ValidationError` |
+
+#### 🧩 Built-in Field Validation:
+
+| Serializer                                 | Form                                       |
+| ------------------------------------------ | ------------------------------------------ |
+| `CharField(required=True, max_length=...)` | `CharField(required=True, max_length=...)` |
+
+#### 🧩 Custom Validator Function:
+
+| Serializer                          | Form                          |
+| ----------------------------------- | ----------------------------- |
+| `validators=[my_func]`              | `validators=[my_func]`        |
+| Raise `serializers.ValidationError` | Raise `forms.ValidationError` |
+
+---
+
+#### 🧩 Error কোথায় store হয়?
+
+| বিষয়                            | Serializer                                  | Form                                                                  |
+| ------------------------------- | ------------------------------------------- | --------------------------------------------------------------------- |
+| ফিল্ড-লেভেল Error               | `serializer.errors['field']`                | `form['field'].errors`                                                |
+| অবজেক্ট-লেভেল Error (non-field) | `serializer.errors['non_field_errors']`     | `form.non_field_errors()`                                             |
+| ম্যানুয়ালি Error add করলে       | `raise ValidationError({'field': 'error'})` | `self.add_error('field', 'error')` বা `raise forms.ValidationError()` |
+
+---
+
+#### 🔄 Summary Table
+
+| বিষয়              | Serializer                               | Form                   | মিল | অমিল                    |
+| ----------------- | ---------------------------------------- | ---------------------- | --- | ----------------------- |
+| ইনহেরিট           | serializers.Serializer / ModelSerializer | forms.Form / ModelForm | ✅  | ❌ DRF uses JSON        |
+| ফিল্ড define      | ✅                                       | ✅                     | ✅  | ❌ HTML vs JSON         |
+| Field validation  | validate\_<field>()                      | clean\_<field>()       | ✅  | Syntax আলাদা            |
+| Object validation | validate()                               | clean()                | ✅  | Syntax আলাদা            |
+| Custom validator  | ✅                                       | ✅                     | ✅  | Raise class আলাদা       |
+| `.is_valid()`     | ✅                                       | ✅                     | ✅  | None                    |
+| `.save()`         | শুধু ModelSerializer এ                   | শুধু ModelForm এ       | ✅  | Manual serializer এ নাই |
+| Data format       | JSON                                     | HTML form              | ❌  | ✅                      |
+| Frontend Render   | ❌                                       | ✅                     | ❌  | ✅                      |
+| API Usage         | ✅                                       | ❌                     | ❌  | ✅                      |
+
+---
+
+### ✅ Extra Tips:
+
+- DRF এর serializer = Django Form এর advanced version, API-centric
+- শুধু frontend rendering লাগলে => Django Form
+- যদি API বানাতে হয় => DRF Serializer
+- Model এর সাথে কাজ করলে => ModelSerializer / ModelForm
+- কাস্টম ভ্যালিডেশন লাগলে => `validate_<field>()` বা `validate()` override করো
+
+---
