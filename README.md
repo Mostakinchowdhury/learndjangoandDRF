@@ -3259,3 +3259,239 @@ urlpatterns = [
 ```
 
 ---
+
+## ✅ Day 14: ViewSets & Routers
+
+- ViewSet vs APIView
+- viewsets,modelviewset,readonlyviewset
+- Routers দিয়ে URL config
+- ViewSet actions (list, retrieve, create, etc.)
+
+### 🔹 1. APIView কি?
+
+`APIView` হল Django REST Framework এর সবচেয়ে Base ক্লাস API তৈরি করার জন্য। এটি Python-এর সাধারণ
+ক্লাস ভিত্তিক View-এর মতো কাজ করে।
+
+### ✅ কেন ব্যবহার করবো?
+
+- যখন আমাদের পুরো কাস্টমাইজড control দরকার HTTP methods এর উপর।
+
+### 🧠 Structure:
+
+```python
+from rest_framework.views import APIView
+from rest_framework.response import Response
+
+class MyAPIView(APIView):
+    def get(self, request):
+        return Response({"message": "GET request"})
+
+    def post(self, request):
+        return Response({"message": "POST request"})
+```
+
+---
+
+### 🔹 2. ViewSet কি?
+
+`ViewSet` একটি ক্লাস যেটি APIView এর উপর ভিত্তি করে তৈরি, কিন্তু এতে HTTP methods গুলো আলাদা করে না
+লিখে একসাথে CRUD operations handle করা যায়। list create এর জন্য আলাদা class আবার
+update,delete,retrive এর জন্য আলাদা ক্লাস লিখার দরকার হয় viewset rouder এর দ্বারা কাজ করে রাউটার
+নিজে route create করতে পারে তাই আমাদের ম্যানুয়ালি ভিউসেট এর জন্য route লিখার দরকার হয় না deafalt
+রাউটার এ রেজিস্টার করলে হয়। সেই সব route বানিয়ে একটা urlpattern বানিয়ে দেয়।
+
+### ✅ কেন ব্যবহার করবো?
+
+- যখন আমরা CRUD operation করবো এবং প্রতিবার `get`, `post`, `put`, `delete` আলাদা আলাদা ক্লাসে এরকম
+  apiview এর মতো করে না লিখে shortcut এ কাজ করতে চাই।এবং নিজে ইউআরএল ম্যাপিং করতে না চাইলে আমরা
+  ভিউসেট use করবো।
+
+### 🧠 Structure:
+
+```python
+from rest_framework.viewsets import ViewSet
+
+class MyViewSet(ViewSet):
+    def list(self, request):
+        return Response({"message": "List of data"})
+
+    def retrieve(self, request, pk=None):
+        return Response({"message": f"Single data {pk}"})
+```
+
+> ⚠️ এখানে `as_view()` method ব্যাবহারের দরকার নেই, DRF এর `routers` এগুলো auto-map করে দেয়।
+
+---
+
+### 🔹 3. ModelViewSet কি?
+
+`ModelViewSet` হচ্ছে `ViewSet` এর subclass, যেটা মডেল এবং serializer নিয়ে পুরো CRUD automatically
+handle করে। `modelviewset` mixins.CreateModelMixin, mixins.RetrieveModelMixin,
+mixins.UpdateModelMixin, mixins.DestroyModelMixin, mixins.ListModelMixin, GenericViewSet কে
+এক্সটেন্ড করে যার ফলে আবার genericviewset ViewSetMixin, generics.GenericAPIView কে extend করে যার
+ফলে বলা যায় modelviewset ইনডাইরেক্ট ভাবে ভিউসেট কে এক্সটেন্ড করে যার ফলে মডেল ভিউসেট এর feacher
+router এর সাপোর্ট পায় আর list ,create ,retrive, destry etc সব ভিউ মিক্সিন থেকে ইনহেরিট করে যার ফলে
+আমাদের জাস্ট সেরিয়ালিজের আর queryset দিতে হয় agenericapiview কে তার কাছ থেকে সব serializer
+,queryset,filter ,serch etc সব নেয় genericviewset এবং সেই অনুযায়ী get মেথড এ লিস্ট pk পাঠালে retrive
+,post এ create টি = etc এভাবে autommatic সব হ্যান্ডেল হয়।
+
+### ✅ কেন ব্যবহার করবো?
+
+- মডেলের জন্য পুরো CRUD তৈরি করতে চাই খুব সহজে।
+
+### 🧠 Structure:
+
+```python
+from rest_framework.viewsets import ModelViewSet
+from .models import MyModel
+from .serializers import MyModelSerializer
+
+class MyModelViewSet(ModelViewSet):
+    queryset = MyModel.objects.all()
+    serializer_class = MyModelSerializer
+```
+
+---
+
+### 🔹 4. ReadOnlyModelViewSet কি?
+
+`ReadOnlyModelViewSet` ও `ModelViewSet` এর মতো, কিন্তু শুধু `list` ও `retrieve` method দেয়। কোন কিছু
+Create, Update, Delete করা যায় না।
+
+### ✅ কেন ব্যবহার করবো?
+
+- যখন শুধু data দেখতে দিবো, কিন্তু edit করতে দিবো না।
+
+### 🧠 Structure:
+
+```python
+from rest_framework.viewsets import ReadOnlyModelViewSet
+
+class MyReadOnlyViewSet(ReadOnlyModelViewSet):
+    queryset = MyModel.objects.all()
+    serializer_class = MyModelSerializer
+```
+
+---
+
+### 🔹 5. Routers দিয়ে URL Configuration
+
+`ViewSet` বা `ModelViewSet` use করলে নিজে URL path লিখতে হয় না, `router` automatically সব URL তৈরি
+করে দেয়।
+
+### ✅ কেন ব্যবহার করবো?
+
+- প্রতিটা route নিজে লিখার ঝামেলা থেকে বাঁচার জন্য।
+
+### 🧠 Structure:
+
+```python
+from rest_framework.routers import DefaultRouter
+from .views import MyModelViewSet
+
+router = DefaultRouter()
+router.register(r'myapi', MyModelViewSet, basename='myapi')
+                   ।_ prefix    ।_viewclass
+
+urlpatterns = [
+    path('', include(router.urls)),
+]
+```
+
+#### router internally নিচের মতো করে কাজ করে।
+
+```python
+
+  [
+      path("prefix/",viewset.as_view({"get":"list","post":"create"}),
+      path("prefix/<int:pk>/",viewset.as_view({"get":"retrive","put":"update","delete":"destroy","patch":"partial-update"}))
+  ]
+
+```
+
+##### note: as_view() te paramitar hisabe configer viewset e pathano jay apiview e jay na.
+
+### 👉 এটা automatically নিচের URL গুলো তৈরি করে:
+
+- GET `/myapi/` → list() // url name-> basename-list
+- GET `/myapi/<pk>/` → retrieve() // url name-> basename-retrieve
+- POST `/myapi/` → create() // url name-> basename-create
+- PUT `/myapi/<pk>/` → update() // url name-> basename-update
+- DELETE `/myapi/<pk>/` → destroy() // url name-> basename-destroy
+
+---
+
+#### prefix vs name
+
+| বিষয়        | `prefix`                                   | `basename`                                   |
+| ----------- | ------------------------------------------ | -------------------------------------------- |
+| কাজ         | এর ওপর ভিত্তি করে প্রতিটা URL path ঠিক করে | এর ওপর ভিত্তি করে প্রতিটা Route name ঠিক করে |
+| ব্যবহার হয়  | ১ম argument হিসাবে                         | ৩য় argument হিসাবে                           |
+| প্রয়োজনীয়তা | Always required                            | Optional (queryset থাকলে না দিলেও চলে)       |
+| উদাহরণ      | `'books'` → `/books/`                      | `'book'` → `book-list`, `book-detail`        |
+
+### 🔹 ViewSet এর Built-in Methods
+
+| Method Name      | Description                 |
+| ---------------- | --------------------------- |
+| list()           | সব object এর লিস্ট দেখায়    |
+| retrieve()       | নির্দিষ্ট একটি object দেখায় |
+| create()         | নতুন object তৈরি করে        |
+| update()         | পুরা object আপডেট করে       |
+| partial_update() | কিছু অংশ আপডেট করে (PATCH)  |
+| destroy()        | object ডিলিট করে            |
+
+---
+
+### 🔹 ViewSet vs APIView তুলনা
+
+| Feature     | APIView                       | ViewSet / ModelViewSet |
+| ----------- | ----------------------------- | ---------------------- |
+| Control     | বেশি কাস্টমাইজড               | কম কাস্টমাইজড          |
+| URL mapping | নিজে করতে হয়                  | Router auto-handle করে |
+| Use case    | যখন একদম নিজে logic লিখতে চাই | যখন CRUD অটো চাই       |
+
+---
+
+#### 🔹 কখন কোনটা ব্যবহার করবো?
+
+| Condition                              | Use                    |
+| -------------------------------------- | ---------------------- |
+| সম্পূর্ণ কাস্টম API behavior দরকার     | `APIView`              |
+| Simple CRUD দরকার                      | `ModelViewSet`         |
+| শুধু দেখাবো (read-only)                | `ReadOnlyModelViewSet` |
+| কাস্টম method সহ CRUD control করতে চাই | `ViewSet` + `@action`  |
+
+---
+
+#### 🔹 Bonus: ViewSet এর Custom Action
+
+```python
+from rest_framework.decorators import action
+
+class MyViewSet(ViewSet):
+    @action(detail=True, methods=['get'])
+    def custom_action(self, request, pk=None):
+        return Response({"msg": "This is custom action"})
+```
+
+URL: `/myviewset/<pk>/custom_action/`
+
+---
+
+#### 🔹 Extra: ViewSet এর ভিতরে as_view() না লাগার কারণ
+
+`ViewSet` class এর জন্য DRF-এর router system automatically URL map করে দেয়। কিন্তু `APIView`
+ব্যাবহার করলে, নিজের হাতে `.as_view()` দিতে হয়, কারণ Django বুঝে না কোন method handle করবে।
+
+---
+
+### ✅ Summary:
+
+- `APIView`: বেশি কাস্টম কাজের জন্য।
+- `ViewSet`: অনেক কাজ shortcut এ করতে চাইলে।
+- `ModelViewSet`: CRUD খুব সহজে তৈরি করতে।
+- `ReadOnlyModelViewSet`: শুধু দেখানোর জন্য।
+- `router`: ViewSet URL অটো handle করে।
+
+---
