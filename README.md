@@ -3802,3 +3802,495 @@ CORS_ALLOW_ALL_ORIGINS = True  # development time only
 Token based Auth করেছো ✅ Error Handling implement করেছো ✅ CORS fix করেছো browser access এর জন্য
 
 ---
+
+
+## ✅ Day 16: Filtering & Searching
+
+- django-filter use
+- filter_backends
+- SearchFilter
+- OrderingFilter
+- django_filter
+- filterset
+---
+
+### 🔹 1. django-filter কী?
+
+`django-filter` হল Django REST Framework (DRF)-এর জন্য এক ধরনের Third-Party filtering library, যা API-এর GET param এর মাধ্যমে সহজে filtering করার সুবিধা দেয়।
+
+### ✅ Install:
+
+```bash
+pip install django-filter
+```
+
+### ✅ settings.py:
+
+```python
+INSTALLED_APPS = [
+    ...
+    'django_filters',
+]
+########################################################################
+REST_FRAMEWORK = {
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend'
+    ]
+}
+```
+
+---
+
+### 🔹 2. Filter Backend কী?
+
+`filter_backends` একটি DRF attribute যা filtering, searching বা ordering এর জন্য backend class নির্ধারণ করে দেয়।filter_backends DRF-এর একটা attribute, যা সাধারণত আমরা APIView, GenericAPIView, ListAPIView, ModelViewSet ইত্যাদির মধ্যে ব্যবহার করি।
+
+> note:Filter Backend GenericAPIView তথা ভিউ  এর  queryset কে মোডিফাই করে আর pagination ভিউ এর রেসপন্স কে মোডিফাই করে এটাই আসল কথা।
+
+### ✅ Global Level Setup:(সব ক্লাস ভিউ এর জন্য)
+
+```python
+# settings.py
+REST_FRAMEWORK = {
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ]
+}
+```
+
+### ✅ Local Level Setup (নির্দিষ্ট View class এর ভিতরে):
+
+```python
+from rest_framework import generics, filters
+from django_filters.rest_framework import DjangoFilterBackend
+
+class ProductListAPIView(generics.ListAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter
+    ]
+    filterset_field=["name","city"]
+```
+
+এই attribute টা accept করে filter backend classes-এর list, যেগুলোর প্রত্যেকটার ভিতরে একটা method থাকে:
+
+```python
+def filter_queryset(self, request, queryset, view):
+    ...
+```
+
+🔹 কে filter_backends ব্যবহার করে?
+#### ✅ GenericAPIView এই attribute টি ব্যবহার করে।
+
+### 📌 সব ListAPIView, RetrieveAPIView, ModelViewSet এইসব ক্লাস GenericAPIView থেকে ইনহেরিট করে। তাই filter_backends আসলে GenericAPIView-এর property।
+
+🔹 ইন্টার্নালি কীভাবে কাজ করে?
+
+GenericAPIView এর মধ্যে একটা method আছে:
+
+```python
+
+def filter_queryset(self, queryset):
+    for backend in list(self.filter_backends):
+        queryset = backend().filter_queryset(self.request, queryset, self)
+    return queryset
+```
+
+#### ⚙️ Step-by-step:
+- self.filter_backends থেকে list নেওয়া হয় (যেমন: [DjangoFilterBackend, SearchFilter])
+- প্রত্যেক backend class কে ইনিশিয়ালাইজ করে: backend()
+- তারপর প্রত্যেকটার filter_queryset() method কল করা হয়:
+
+```python
+queryset = backend().filter_queryset(request, queryset, view)
+```
+
+- প্রতিবারে queryset modify হয়ে update হয়।
+- শেষে final filtered queryset return হয়।
+🔹 View-এ এই filter_queryset() কখন কিভাবে  কল হয় mixin এর মাদ্ধমে ?
+```python
+def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+```
+
+🔹 Custom filter_backend class বানাতে চাইলে?
+
+```python
+from rest_framework.filters import BaseFilterBackend
+
+class MyCustomFilterBackend(BaseFilterBackend):
+    def filter_queryset(self, request, queryset, view):
+        # কাস্টম লজিক
+        if request.user.is_staff:
+            return queryset
+        return queryset.none()
+```
+
+
+
+---
+
+### 🔹 3. django\_filter FilterSet ব্যবহার
+
+### ✅ Step-by-Step:
+
+#### Step 1: Create filters.py
+
+```python
+import django_filters
+from .models import Product
+
+class ProductFilter(django_filters.FilterSet):
+    price_min = django_filters.NumberFilter(field_name='price', lookup_expr='gte')
+    price_max = django_filters.NumberFilter(field_name='price', lookup_expr='lte')
+    name = django_filters.CharFilter(lookup_expr='icontains')
+
+    class Meta:
+        model = Product
+        fields = ['category', 'price_min', 'price_max', 'name']
+
+```
+
+#### Step 2: View-এ যুক্ত করো
+
+```python
+from .filters import ProductFilter
+
+class ProductListAPIView(generics.ListAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = ProductFilter
+```
+
+---
+
+#### 🔹 4. SearchFilter (Full Text Search)
+
+`SearchFilter` allow করে search query তৈরি করতে `?search=...` param ব্যবহার করে।
+
+### ✅ Syntax:
+
+```python
+from rest_framework import filters
+
+class ProductListAPIView(generics.ListAPIView):
+    ...
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name', 'description']
+```
+
+### ✅ Prefix Meaning:
+
+* `^title` → Starts with
+* `=title` → Exact match
+* `@title` → Full text search (only PostgreSQL)
+* `$title` → Regex match
+
+✅ Example:
+
+```python
+search_fields = ['^name', '=category', '$description']
+```
+
+---
+
+#### 🔹 5. OrderingFilter
+
+API-তে order করতে `?ordering=fieldname` ব্যবহার করো।
+
+#### ✅ Example:
+
+```python
+class ProductListAPIView(generics.ListAPIView):
+    ...
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ['price', 'created_at']
+    ordering = ['price']  # Default ordering
+```
+
+➡️ ?ordering=price
+➡️ ?ordering=-price
+
+---
+
+#### 🔹 6. কোনটা কবে ব্যবহার করবো?
+
+| Feature          | Use When                                          |
+| ---------------- | ------------------------------------------------- |
+| django\_filter   | Exact field filtering, date range, etc.           |
+| SearchFilter     | Full-text search/filter                           |
+| OrderingFilter   | Sorting result ascending/descending               |
+| filterset\_class | Complex filter logic (custom class-based filters) |
+
+---
+
+#### 🔹 7. Internally DRF কীভাবে কাজ করে?
+
+* View এর `filter_backends` list অনুযায়ী sequentially filtering apply করে
+* প্রত্যেক filter class এ `filter_queryset(self, request, queryset, view)` method থাকে
+* যেটা `request.GET` থেকে query নেয় এবং `queryset` modify করে return করে
+
+---
+
+#### 🔹 8. সব কিছুর সংক্ষিপ্ত সংযোগ:
+
+```python
+# filters.py
+import django_filters
+from .models import Product
+
+class ProductFilter(django_filters.FilterSet):
+    class Meta:
+        model = Product
+        fields = ['category', 'price']
+
+# views.py
+from rest_framework import generics, filters
+from django_filters.rest_framework import DjangoFilterBackend
+from .filters import ProductFilter
+
+class ProductListAPIView(generics.ListAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter
+    ]
+    filterset_class = ProductFilter
+    filterset_field=["category","topic"]
+    search_fields = ['^name', '=category']
+    ordering_fields = ['price', 'created_at']
+    ordering = ['price']
+```
+
+---
+#### filterset_fields vs filterset_class
+
+| পার্থক্য                  | filterset\_fields                         | filterset\_class                  |
+| ------------------------- | ----------------------------------------- | --------------------------------- |
+| কিসের জন্য ব্যবহার হয়     | Simple ফিল্ড ভিত্তিক filtering            | Complex/custom filtering logic    |
+| কীভাবে কাজ করে            | DRF নিজে থেকে ফিল্ডের উপর filter তৈরি করে | তুমি নিজে filter class define করো |
+| কোডের উদাহরণ              | `filterset_fields = ['field1', 'field2']` | `filterset_class = ProductFilter` |
+| Custom logic support করে? | ❌ না                                      | ✅ হ্যাঁ                           |
+| কোনটা বেশি flexible?      | ❌ সীমিত                                   | ✅ অনেক বেশি flexible              |
+
+
+#### 🔚 Conclusion
+
+এই হ্যান্ডনোট পড়ে তোমার এখন পুরোপুরি ক্লিয়ার হয়ে যাওয়ার কথা:
+
+* `django-filter` দিয়ে কাস্টম ফিল্টার
+* `SearchFilter` দিয়ে flexible সার্চ
+* `OrderingFilter` দিয়ে ordering
+* `filter_backends` কিভাবে কাজ করে
+* Prefix ( ^ @ = \$ ) মানে কী
+
+তোমার DRF প্রজেক্টে ফিল্টারিং এখন হবে একদম প্রফেশনাল লেভেলের। ✅
+
+
+---
+
+## ✅ Day 17: Pagination
+* PageNumberPagination
+* LimitOffsetPagination
+* Custom Pagination Class
+
+---
+
+### 🔹 Pagination কেন দরকার?
+
+যখন Queryset বড় হয় (১০০০+ record), তখন পুরো dataset return করলে performance খারাপ হয়। তাই আমরা **pagination** ব্যবহার করি — অর্থাৎ **একসাথে সব না পাঠিয়ে, প্রতি বার কিছু কিছু করে পাঠানো**।
+
+---
+
+### 🔹 Pagination DRF-এ কিভাবে কাজ করে?
+
+DRF-এর যেকোনো `ListAPIView`, `ModelViewSet` বা `ListModelMixin` এ pagination অটোমেটিক কাজ করে যদি pagination class সেট করা থাকে।
+
+Pagination class-এর মূল কাজ:
+
+* কোন page কত item দেখাবে তা নিয়ন্ত্রণ করা
+* Response format ঠিক করে দেওয়া
+
+---
+
+### 🔹 PageNumberPagination — (Simple Page Based)
+
+#### ✅ ব্যবহার করো যখন:
+
+* তুমি চাই pagination `?page=2` এর মতন হবে
+* Fixed item per page চাও
+* পেজ বানাতে চাও বই এর মতো যে কয়েকটা লাইন মিলে একটা পেজ বানায় আবার আবার কয়েকটা পেজ মিলে একটা বই বানায় এক্ষেত্রে লাইন হলো মডেল অবজেক্ট আর বই হলো queryset আমরা params এ বলে দিতে পারি যে আমরা কয় নম্বর পেজ এর ডাটা নিতে চাই।
+
+#### ✅ Global Setup (settings.py):
+
+```python
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,
+    "PAGE_PARMS":"p"
+}
+```
+
+➡️ এখন `/api/products/?page=2` → এইরকম URL কাজ করবে
+
+#### ✅ Local Setup (View-এ):
+
+```python
+from rest_framework.pagination import PageNumberPagination
+
+class ProductPagination(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = 'size'
+    max_page_size = 100
+    page_query_param = 'mypage'
+```
+
+```python
+class ProductListAPIView(generics.ListAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    pagination_class = ProductPagination
+```
+
+➡️ `/api/products/?mypage=3&size=20` → এইভাবে কাজ করবে
+
+---
+
+### 🔹 LimitOffsetPagination — (Limit & Offset(skippeditemnumber) Based)
+
+#### ✅ ব্যবহার করো যখন:
+
+* তুমি চাই user বলে দিবে কয়টা skip(offset) করে কয়টা item(limit) নিবে
+* URL হবে `?limit=10&offset=30`
+
+#### ✅ Global Setup:
+
+```python
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 10  # default limit
+}
+```
+
+➡️ `/api/products/?limit=5&offset=15`
+
+### ✅ Local Customization:
+
+```python
+from rest_framework.pagination import LimitOffsetPagination
+
+class CustomLimitPagination(LimitOffsetPagination):
+    default_limit = 5
+    limit_query_param = 'lmt'
+    offset_query_param = 'ofs'
+    max_limit = 100
+```
+
+```python
+class ProductListAPIView(generics.ListAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    pagination_class = CustomLimitPagination
+```
+
+➡️ `/api/products/?lmt=10&ofs=20`
+
+---
+
+### 🔹 Custom Pagination (Fully Customized Response)
+
+#### ✅ Custom Class বানানোর কারন:
+
+* তুমি চাই JSON এর format পুরোপুরি নিজের মতন করো
+* Custom page\_size, max\_limit দিতে পারো
+
+#### ✅ উদাহরণ:
+
+```python
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
+
+class CustomPagination(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = 'size'
+    max_page_size = 50
+    page_query_param = 'page'
+
+    def get_paginated_response(self, data):
+        return Response({
+            'total_items': self.page.paginator.count,
+            'total_pages': self.page.paginator.num_pages,
+            'current_page': self.page.number,
+            'next': self.get_next_link(),
+            'previous': self.get_previous_link(),
+            'results': data
+        })
+```
+
+➡️ এখন API response হবে:
+
+```json
+{
+  "total_items": 50,
+  "total_pages": 10,
+  "current_page": 2,
+  "next": "http://...page=3",
+  "previous": "http://...page=1",
+  "results": [ ...data... ]
+}
+```
+
+---
+
+#### 🔹 Pagination Summary Table
+
+| Pagination Type       | Query Format          | Use When                            |
+| --------------------- | --------------------- | ----------------------------------- |
+| PageNumberPagination  | `?page=2`             | Simple page-based navigation        |
+| LimitOffsetPagination | `?limit=10&offset=20` | More control on data range          |
+| CustomPagination      | As you design         | Need custom response / page control |
+
+---
+
+#### 🔹 Pagination Important Parameters
+
+| Parameter               | কাজ কী করে                             |
+| ----------------------- | -------------------------------------- |
+| `page_size`             | প্রতি পেজে কয়টা item থাকবে             |
+| `page_size_query_param` | client-side থেকে page\_size চেঞ্জ করতে |
+| `max_page_size`         | client কতো বড় page\_size দিতে পারবে    |
+| `page_query_param`      | default `?page=` এর নাম চেঞ্জ করতে     |
+| `limit_query_param`     | default `?limit=` নাম চেঞ্জ করতে       |
+| `offset_query_param`    | default `?offset=` নাম চেঞ্জ করতে      |
+| `default_limit`         | initial limit মান                      |
+
+---
+
+#### 🔚 Conclusion
+
+এই হ্যান্ডনোটের মাধ্যমে তুমি এখন শিখে ফেলেছো:
+
+* DRF Pagination কিভাবে কাজ করে
+* Global vs Local Pagination config
+* PageNumberPagination vs LimitOffsetPagination এর পার্থক্য
+* Custom Pagination কীভাবে বানাতে হয়
+* pagination class এর parameter গুলোর কাজ
