@@ -3496,8 +3496,6 @@ URL: `/myviewset/<pk>/custom_action/`
 
 ---
 
-
-
 ## ✅ Day 15: API Testing (Postman)
 
 - Postman দিয়ে API GET/POST
@@ -3511,10 +3509,14 @@ URL: `/myviewset/<pk>/custom_action/`
 ---
 
 ### 🧪 1. API Testing (Postman)
+
 ### কেন API Testing করবো?
-Django-তে আমরা যখন API তৈরি করি (DRF দিয়ে), তখন চাই যে Client সঠিকভাবে request পাঠাতে পারবে এবং Server ঠিকভাবে response দিবে। এইটা যাচাই করার জন্য আমরা Postman ব্যবহার করি।
+
+Django-তে আমরা যখন API তৈরি করি (DRF দিয়ে), তখন চাই যে Client সঠিকভাবে request পাঠাতে পারবে এবং
+Server ঠিকভাবে response দিবে। এইটা যাচাই করার জন্য আমরা Postman ব্যবহার করি।
 
 ### Postman কী?
+
 Postman একটি GUI-based tool, যেটা দিয়ে তুমি API call (GET, POST, PUT, DELETE etc) করতে পারো — সহজে।
 
 ---
@@ -3522,6 +3524,7 @@ Postman একটি GUI-based tool, যেটা দিয়ে তুমি API 
 ### 🔁 2. Postman দিয়ে API GET / POST
 
 ### 🔹 GET Request:
+
 - ডেটা দেখার জন্য ব্যবহৃত হয়
 - Example:
   - Endpoint: `http://127.0.0.1:8000/api/blogs/`
@@ -3529,6 +3532,7 @@ Postman একটি GUI-based tool, যেটা দিয়ে তুমি API 
   - Postman-এ শুধু URL দিয়ে **Send** ক্লিক করলেই JSON data চলে আসবে
 
 ### 🔹 POST Request:
+
 - নতুন ডেটা add করার জন্য
 - Example:
   - Endpoint: `http://127.0.0.1:8000/api/blogs/`
@@ -3547,24 +3551,32 @@ Postman একটি GUI-based tool, যেটা দিয়ে তুমি API 
 ### 📑 3. Headers, Auth, Params, Body
 
 ### 🔸 Headers:
+
 Headers হল এমন তথ্য যা Client এবং Server-এর মধ্যে communication এর জন্য দরকার হয়।
 
 #### Headers ২ প্রকার:
+
 1. **General Headers** – Meta info দেয়
 2. **Request Headers** – Client থেকে যায়
 3. **Response Headers** – Server থেকে আসে
 
-
 ### ১ General Headers:
-> HTTP General Headers মানে এমন header গুলা যা request এবং response উভয় ক্ষেত্রেই ব্যবহৃত হতে পারে। এই headers গুলা মূলত message-এর meta-information বহন করে — যেমন message caching, connection info, অথবা date/time এর মতো বিষয়।
- - এগুলো এমন header যা client → server এবং server → client উভয়    দিকেই যেতে পারে।
-- এগুলোর কাজ হচ্ছে message-এর আচরণ ও বৈশিষ্ট্য ব্যাখ্যা করা, কিন্তু এগুলো body বা content-এর বিষয়ে নির্দিষ্ট কিছু বলে না।
+
+> HTTP General Headers মানে এমন header গুলা যা request এবং response উভয় ক্ষেত্রেই ব্যবহৃত হতে পারে।
+> এই headers গুলা মূলত message-এর meta-information বহন করে — যেমন message caching, connection info,
+> অথবা date/time এর মতো বিষয়।
+
+- এগুলো এমন header যা client → server এবং server → client উভয় দিকেই যেতে পারে।
+- এগুলোর কাজ হচ্ছে message-এর আচরণ ও বৈশিষ্ট্য ব্যাখ্যা করা, কিন্তু এগুলো body বা content-এর বিষয়ে
+  নির্দিষ্ট কিছু বলে না।
 
 - General Headers সব সময় message-এর body নয়, বরং message নিজেই কিভাবে handle হবে তা নির্দেশ করে।
 
-- এগুলো content-specific নয়, যেমন content-type, content-length এগুলো entity headers বা representation headers এ পড়ে।
+- এগুলো content-specific নয়, যেমন content-type, content-length এগুলো entity headers বা
+  representation headers এ পড়ে।
 
 #### 🎯Most Common Built-in HTTP General Headers (Meta Info দেয়)
+
 | Header              | কাজ                                                         | কোথায়/কেন ব্যবহার হয়                                        | না ব্যবহার করলে কী হতে পারে                           |
 | ------------------- | ----------------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------- |
 | `Cache-Control`     | কন্টেন্ট ব্রাউজারে কতক্ষণ ক্যাশে থাকবে তা নির্ধারণ করে      | Performance optimization, SPA বা static content এর ক্ষেত্রে | কন্টেন্ট বারবার লোড হবে → Performance slow            |
@@ -3574,6 +3586,7 @@ Headers হল এমন তথ্য যা Client এবং Server-এর ম�
 | `Via`               | কোন intermediate proxy/gateway হয়ে এসেছে তা জানায়           | Proxy server বা caching mechanism ব্যবহারে                  | Proxy troubleshooting কঠিন হয়ে পড়ে                    |
 
 👉 Example General headers:
+
 ```http
 GET /api/users HTTP/1.1
 Host: example.com
@@ -3585,7 +3598,9 @@ User-Agent: Mozilla/5.0
 
 ### ২ Request Headers (Client → Server যায়):
 
-> HTTP Request Headers মূলত client (যেমন browser বা Postman) যখন server-এর কাছে কোন request পাঠায়, তখন সাথে কিছু অতিরিক্ত তথ্য পাঠানো হয় header-এর মাধ্যমে। এগুলো server কে বলে দেয় request সম্পর্কে context, যেমন content format, authentication token, language preference ইত্যাদি।
+> HTTP Request Headers মূলত client (যেমন browser বা Postman) যখন server-এর কাছে কোন request পাঠায়,
+> তখন সাথে কিছু অতিরিক্ত তথ্য পাঠানো হয় header-এর মাধ্যমে। এগুলো server কে বলে দেয় request সম্পর্কে
+> context, যেমন content format, authentication token, language preference ইত্যাদি।
 
 #### 🎯Most Common Built-in HTTP Request Headers
 
@@ -3597,8 +3612,8 @@ User-Agent: Mozilla/5.0
 | `Authorization` | Access token বা credentials পাঠায়                         | Protected route access করতে                   | Unauthorized (401) error আসবে               |
 | `Content-Type`  | Client কনটেন্টের টাইপ declare করে (e.g., JSON, form-data) | POST, PUT রিকোয়েস্টে body parse করার জন্য     | Server body বুঝতে পারবে না → Error 415      |
 
-
 #### 👉 Example Request headers:
+
 ```http
 GET /api/users HTTP/1.1
 Host: example.com
@@ -3609,6 +3624,7 @@ User-Agent: Mozilla/5.0
 ```
 
 #### ✅ Custom Headers:
+
 ##### Custom header গুলো সাধারনত X- দিয়ে শুরু হয়।
 
 ```http
@@ -3617,13 +3633,19 @@ X-API-Key: abc123xyz
 ```
 
 #### Header না দিলে কী সমস্যা?
+
 - Server বুঝতে পারবে না কোন format-এ data এসেছে
 - Secure API-তে Access Token না থাকলে `401 Unauthorized` error দিবে
 
 ### ৩. Response Headers (Server → Client পাঠায়)
-> Django (বা যেকোনো ওয়েব ফ্রেমওয়ার্ক)-এর HTTP Response এ যে Headers থাকে, সেগুলো মূলত client (browser বা API consumer)-এর কাছে কিছু গুরুত্বপূর্ণ metadata পাঠানোর জন্য ব্যবহৃত হয়।এগুলো হলো Key-Value pair আকারে তথ্য যা ব্রাউজার বা ক্লায়েন্টকে জানায় Response-এর ধরন, Cache করতে পারবে কিনা, Content কী ধরনের, কত বড় ইত্যাদি।
+
+> Django (বা যেকোনো ওয়েব ফ্রেমওয়ার্ক)-এর HTTP Response এ যে Headers থাকে, সেগুলো মূলত client
+> (browser বা API consumer)-এর কাছে কিছু গুরুত্বপূর্ণ metadata পাঠানোর জন্য ব্যবহৃত হয়।এগুলো হলো
+> Key-Value pair আকারে তথ্য যা ব্রাউজার বা ক্লায়েন্টকে জানায় Response-এর ধরন, Cache করতে পারবে কিনা,
+> Content কী ধরনের, কত বড় ইত্যাদি।
 
 ##### ✅ Response Headers-এর ধরণ
+
 > Response Headers কে আমরা কয়েকটি ভাগে ভাগ করতে পারি:
 
 | ধরন                  | বর্ণনা                                   |
@@ -3632,7 +3654,6 @@ X-API-Key: abc123xyz
 | **Response Headers** | Server সম্পর্কিত তথ্য                    |
 | **Entity Headers**   | মূল content (body) সম্পর্কে তথ্য         |
 | **Security Headers** | নিরাপত্তা নিশ্চিত করার জন্য ব্যবহৃত      |
-
 
 #### 🎯Most Common Built-in HTTP Response Headers
 
@@ -3643,7 +3664,6 @@ X-API-Key: abc123xyz
 | `Set-Cookie`                  | Cookie ক্লায়েন্টে সেট করতে                           | Session management, auth token save      | লগইন সিস্টেম কাজ করবে না                 |
 | `Access-Control-Allow-Origin` | কোন origin থেকে রিকোয়েস্ট আসতে পারবে তা বলে          | Cross-origin requests (CORS) handle করতে | অন্য origin থেকে API access সম্ভব হবে না |
 | `ETag`                        | কন্টেন্ট চেঞ্জ হয়েছে কিনা চেক করার জন্য version/hash | Cache validation এবং bandwidth কমাতে     | পুরোনো বা ভুল ক্যাশড ডেটা লোড হতে পারে   |
-
 
 ### ✅ উদাহরণ (Django view থেকে):
 
@@ -3661,24 +3681,37 @@ def my_view(request):
 
 #### ✅ Bonus: Django Response Header দেখা যাবে কোথায়?
 
--  Browser DevTools → Network → Headers Tab
+- Browser DevTools → Network → Headers Tab
 - Postman → Response → Headers
 - Python code দিয়ে:
+
 ```python
 response = client.get('/some-url/')
 print(response.headers)
 ```
 
+### ✅ সংক্ষিপ্তভাবে (Auto bind and none bind header):
+
+| Header টাইপ | Auto bind হয়                                     | Manually bind করতে হয়                                       |
+| ----------- | ------------------------------------------------ | ----------------------------------------------------------- |
+| General     | `Date`, `Connection`, `Transfer-Encoding`, `Via` | `Cache-Control`                                             |
+| Request     | `Host`, `User-Agent`, `Accept`                   | `Authorization`, `Content-Type`                             |
+| Response    | `Content-Length`, `ETag`                         | `Content-Type`, `Set-Cookie`, `Access-Control-Allow-Origin` |
+
 ### 🔸 Auth:
+
 Postman-এ:
+
 - Authorization Tab > Type: Token/Auth
 - Token টাইপ দিলে Header-এ auto যোগ হয়
 
 ### 🔸 Params:
+
 - Query parameters (URL এর শেষে ?name=value)
 - Example: `/blogs/?author=monira`
 
 ### 🔸 Body:
+
 - শুধু POST, PUT, PATCH method এ লাগে
 - Postman-এ: Body > raw > JSON
 
@@ -3687,11 +3720,13 @@ Postman-এ:
 ## ❌ 4. API Error Handling
 
 ### কেন দরকার?
+
 - Client কে বুঝানো দরকার যে request-এ কী ভুল ছিল
 
 ### Django DRF-এ Error Handling এর Step-by-Step Process:
 
 #### ✅ Step 1: Validation error example (Serializer)
+
 ```python
 def validate_title(self, value):
     if "badword" in value:
@@ -3700,6 +3735,7 @@ def validate_title(self, value):
 ```
 
 #### ✅ Step 2: View-এ try-except
+
 ```python
 from rest_framework.response import Response
 from rest_framework import status
@@ -3716,6 +3752,7 @@ def post(self, request):
 ```
 
 #### ✅ Step 3: Postman-এ response দেখো
+
 ```json
 {
   "title": ["Invalid title"]
@@ -3723,22 +3760,26 @@ def post(self, request):
 ```
 
 #### ✅ Common Error Codes:
+
 | Status Code | মানে                               |
-|-------------|--------------------------------------|
-| 200         | Success                              |
-| 201         | Created                              |
-| 400         | Bad Request (ভুল data)               |
-| 401         | Unauthorized (token নাই / invalid)  |
-| 403         | Forbidden (permission নাই)           |
-| 404         | Not Found                            |
-| 500         | Server Error                         |
+| ----------- | ---------------------------------- |
+| 200         | Success                            |
+| 201         | Created                            |
+| 400         | Bad Request (ভুল data)             |
+| 401         | Unauthorized (token নাই / invalid) |
+| 403         | Forbidden (permission নাই)         |
+| 404         | Not Found                          |
+| 500         | Server Error                       |
 
 ---
 
 ## ✅ Bonus: CORS Issue Fix (Browser Access)
+
 ### Django-তে CORS allow করতে:
+
 1. `pip install django-cors-headers`
 2. settings.py এ যোগ করো:
+
 ```python
 INSTALLED_APPS = [
   ...
@@ -3756,12 +3797,8 @@ CORS_ALLOW_ALL_ORIGINS = True  # development time only
 ---
 
 ## 📌 Summary Checklist (Revision Time)
-✅ Postman setup করেছো
-✅ GET/POST করে response পেয়েছো
-✅ Header, Body, Params use করতে পারো
-✅ Token based Auth করেছো
-✅ Error Handling implement করেছো
-✅ CORS fix করেছো browser access এর জন্য
+
+✅ Postman setup করেছো ✅ GET/POST করে response পেয়েছো ✅ Header, Body, Params use করতে পারো ✅
+Token based Auth করেছো ✅ Error Handling implement করেছো ✅ CORS fix করেছো browser access এর জন্য
 
 ---
-
