@@ -1,4 +1,4 @@
-from .models import Blogs
+from .models import Blogs,Comment
 from django.contrib import admin
 
 @admin.register(Blogs)
@@ -15,3 +15,14 @@ class Blogsadmin(admin.ModelAdmin):
     search_fields = ('blog_owner',)
     list_filter = ('blog_upload_time',)
     ordering = ('-blog_last_upload_time',)
+
+@admin.register(Comment)
+class comentadmin(admin.ModelAdmin):
+    list_display = (
+       'blog',
+        'coment_text',
+        'coment_date',
+    )
+    list_display_links=("blog",)
+    search_fields = ('coment_text',)
+    ordering=('-coment_date',)

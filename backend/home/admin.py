@@ -63,7 +63,20 @@ class CustomUserAdmin(UserAdmin):
         'order_count',
         'get_tags',
     )
+      # এখানে email প্রথমেই রাখুন
+    fieldsets = (
+        (None, {'fields': ('email', 'password')}),
+        ('Personal Info', {'fields': ('first_name', 'last_name')}),
+        ('Permissions', {'fields': ('is_staff', 'is_active','is_superuser', 'groups', 'user_permissions')}),
+    )
 
+    # ইউজার add করার সময় যে ফিল্ড আসবে
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('email','username', 'password1', 'password2', 'is_staff', 'is_active','is_superuser')}
+        ),
+    )
     def get_language(self, obj):
         setting = Setting.objects.filter(user=obj).first()
         return setting.language if setting else "N/A"

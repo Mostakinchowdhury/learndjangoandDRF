@@ -11,3 +11,16 @@ class Blogs(models.Model):
   blog_upload_time=models.DateTimeField(auto_now_add=True)
   blog_last_upload_time=models.DateTimeField(auto_now=True)
 
+  def __str__(self):
+    return self.blog_text
+
+
+
+class Comment(models.Model):
+  blog=models.ForeignKey(Blogs,on_delete=models.CASCADE)
+  coment_text=models.TextField(max_length=300)
+  coment_date=models.DateTimeField(auto_now_add=True)
+
+  def __str__(self):
+    return self.blog.__str__()
+

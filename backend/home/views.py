@@ -10,6 +10,7 @@ from .forms import customuserform
 from django.contrib.auth import login,logout,authenticate
 from django.contrib.auth.decorators import login_required,user_passes_test
 from .middlewares import mydecorate
+
 # from django.core import mail
 User=get_user_model()
 
