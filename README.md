@@ -4428,6 +4428,23 @@ DRF যখন **APIView / GenericAPIView** চালায়, তখন এর ম
        └──────────────┘              └──────────────┘
 ```
 
+### 😊 internally
+
+```python
+def check_permissions(self, request):
+        """
+        Check if the request should be permitted.
+        Raises an appropriate exception if the request is not permitted.
+        """
+        for permission in self.get_permissions():
+            if not permission.has_permission(request, self):
+                self.permission_denied(
+                    request,
+                    message=getattr(permission, 'message', None),
+                    code=getattr(permission, 'code', None)
+                )
+```
+
 ---
 
 ### 5️⃣ Method: `has_permission()` vs `has_object_permission()`
