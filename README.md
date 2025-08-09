@@ -3803,7 +3803,6 @@ Token based Auth করেছো ✅ Error Handling implement করেছো �
 
 ---
 
-
 ## ✅ Day 16: Filtering & Searching
 
 - django-filter use
@@ -3812,11 +3811,13 @@ Token based Auth করেছো ✅ Error Handling implement করেছো �
 - OrderingFilter
 - django_filter
 - filterset
+
 ---
 
 ### 🔹 1. django-filter কী?
 
-`django-filter` হল Django REST Framework (DRF)-এর জন্য এক ধরনের Third-Party filtering library, যা API-এর GET param এর মাধ্যমে সহজে filtering করার সুবিধা দেয়।
+`django-filter` হল Django REST Framework (DRF)-এর জন্য এক ধরনের Third-Party filtering library, যা
+API-এর GET param এর মাধ্যমে সহজে filtering করার সুবিধা দেয়।
 
 ### ✅ Install:
 
@@ -3843,9 +3844,12 @@ REST_FRAMEWORK = {
 
 ### 🔹 2. Filter Backend কী?
 
-`filter_backends` একটি DRF attribute যা filtering, searching বা ordering এর জন্য backend class নির্ধারণ করে দেয়।filter_backends DRF-এর একটা attribute, যা সাধারণত আমরা APIView, GenericAPIView, ListAPIView, ModelViewSet ইত্যাদির মধ্যে ব্যবহার করি।
+`filter_backends` একটি DRF attribute যা filtering, searching বা ordering এর জন্য backend class
+নির্ধারণ করে দেয়।filter_backends DRF-এর একটা attribute, যা সাধারণত আমরা APIView, GenericAPIView,
+ListAPIView, ModelViewSet ইত্যাদির মধ্যে ব্যবহার করি।
 
-> note:Filter Backend GenericAPIView তথা ভিউ  এর  queryset কে মোডিফাই করে আর pagination ভিউ এর রেসপন্স কে মোডিফাই করে এটাই আসল কথা।
+> note:Filter Backend GenericAPIView তথা ভিউ এর queryset কে মোডিফাই করে আর pagination ভিউ এর রেসপন্স
+> কে মোডিফাই করে এটাই আসল কথা।
 
 ### ✅ Global Level Setup:(সব ক্লাস ভিউ এর জন্য)
 
@@ -3878,7 +3882,8 @@ class ProductListAPIView(generics.ListAPIView):
     filterset_field=["name","city"]
 ```
 
-এই attribute টা accept করে filter backend classes-এর list, যেগুলোর প্রত্যেকটার ভিতরে একটা method থাকে:
+এই attribute টা accept করে filter backend classes-এর list, যেগুলোর প্রত্যেকটার ভিতরে একটা method
+থাকে:
 
 ```python
 def filter_queryset(self, request, queryset, view):
@@ -3886,6 +3891,7 @@ def filter_queryset(self, request, queryset, view):
 ```
 
 🔹 কে filter_backends ব্যবহার করে?
+
 #### ✅ GenericAPIView এই attribute টি ব্যবহার করে।
 
 ### 📌 সব ListAPIView, RetrieveAPIView, ModelViewSet এইসব ক্লাস GenericAPIView থেকে ইনহেরিট করে। তাই filter_backends আসলে GenericAPIView-এর property।
@@ -3903,6 +3909,7 @@ def filter_queryset(self, queryset):
 ```
 
 #### ⚙️ Step-by-step:
+
 - self.filter_backends থেকে list নেওয়া হয় (যেমন: [DjangoFilterBackend, SearchFilter])
 - প্রত্যেক backend class কে ইনিশিয়ালাইজ করে: backend()
 - তারপর প্রত্যেকটার filter_queryset() method কল করা হয়:
@@ -3912,8 +3919,9 @@ queryset = backend().filter_queryset(request, queryset, view)
 ```
 
 - প্রতিবারে queryset modify হয়ে update হয়।
-- শেষে final filtered queryset return হয়।
-🔹 View-এ এই filter_queryset() কখন কিভাবে  কল হয় mixin এর মাদ্ধমে ?
+- শেষে final filtered queryset return হয়। 🔹 View-এ এই filter_queryset() কখন কিভাবে কল হয় mixin এর
+  মাদ্ধমে ?
+
 ```python
 def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -3941,11 +3949,9 @@ class MyCustomFilterBackend(BaseFilterBackend):
         return queryset.none()
 ```
 
-
-
 ---
 
-### 🔹 3. django\_filter FilterSet ব্যবহার
+### 🔹 3. django_filter FilterSet ব্যবহার
 
 ### ✅ Step-by-Step:
 
@@ -3997,10 +4003,10 @@ class ProductListAPIView(generics.ListAPIView):
 
 ### ✅ Prefix Meaning:
 
-* `^title` → Starts with
-* `=title` → Exact match
-* `@title` → Full text search (only PostgreSQL)
-* `$title` → Regex match
+- `^title` → Starts with
+- `=title` → Exact match
+- `@title` → Full text search (only PostgreSQL)
+- `$title` → Regex match
 
 ✅ Example:
 
@@ -4024,27 +4030,26 @@ class ProductListAPIView(generics.ListAPIView):
     ordering = ['price']  # Default ordering
 ```
 
-➡️ ?ordering=price
-➡️ ?ordering=-price
+➡️ ?ordering=price ➡️ ?ordering=-price
 
 ---
 
 #### 🔹 6. কোনটা কবে ব্যবহার করবো?
 
-| Feature          | Use When                                          |
-| ---------------- | ------------------------------------------------- |
-| django\_filter   | Exact field filtering, date range, etc.           |
-| SearchFilter     | Full-text search/filter                           |
-| OrderingFilter   | Sorting result ascending/descending               |
-| filterset\_class | Complex filter logic (custom class-based filters) |
+| Feature         | Use When                                          |
+| --------------- | ------------------------------------------------- |
+| django_filter   | Exact field filtering, date range, etc.           |
+| SearchFilter    | Full-text search/filter                           |
+| OrderingFilter  | Sorting result ascending/descending               |
+| filterset_class | Complex filter logic (custom class-based filters) |
 
 ---
 
 #### 🔹 7. Internally DRF কীভাবে কাজ করে?
 
-* View এর `filter_backends` list অনুযায়ী sequentially filtering apply করে
-* প্রত্যেক filter class এ `filter_queryset(self, request, queryset, view)` method থাকে
-* যেটা `request.GET` থেকে query নেয় এবং `queryset` modify করে return করে
+- View এর `filter_backends` list অনুযায়ী sequentially filtering apply করে
+- প্রত্যেক filter class এ `filter_queryset(self, request, queryset, view)` method থাকে
+- যেটা `request.GET` থেকে query নেয় এবং `queryset` modify করে return করে
 
 ---
 
@@ -4082,53 +4087,55 @@ class ProductListAPIView(generics.ListAPIView):
 ```
 
 ---
+
 #### filterset_fields vs filterset_class
 
-| পার্থক্য                  | filterset\_fields                         | filterset\_class                  |
+| পার্থক্য                  | filterset_fields                          | filterset_class                   |
 | ------------------------- | ----------------------------------------- | --------------------------------- |
 | কিসের জন্য ব্যবহার হয়     | Simple ফিল্ড ভিত্তিক filtering            | Complex/custom filtering logic    |
 | কীভাবে কাজ করে            | DRF নিজে থেকে ফিল্ডের উপর filter তৈরি করে | তুমি নিজে filter class define করো |
 | কোডের উদাহরণ              | `filterset_fields = ['field1', 'field2']` | `filterset_class = ProductFilter` |
-| Custom logic support করে? | ❌ না                                      | ✅ হ্যাঁ                           |
-| কোনটা বেশি flexible?      | ❌ সীমিত                                   | ✅ অনেক বেশি flexible              |
-
+| Custom logic support করে? | ❌ না                                     | ✅ হ্যাঁ                          |
+| কোনটা বেশি flexible?      | ❌ সীমিত                                  | ✅ অনেক বেশি flexible             |
 
 #### 🔚 Conclusion
 
 এই হ্যান্ডনোট পড়ে তোমার এখন পুরোপুরি ক্লিয়ার হয়ে যাওয়ার কথা:
 
-* `django-filter` দিয়ে কাস্টম ফিল্টার
-* `SearchFilter` দিয়ে flexible সার্চ
-* `OrderingFilter` দিয়ে ordering
-* `filter_backends` কিভাবে কাজ করে
-* Prefix ( ^ @ = \$ ) মানে কী
+- `django-filter` দিয়ে কাস্টম ফিল্টার
+- `SearchFilter` দিয়ে flexible সার্চ
+- `OrderingFilter` দিয়ে ordering
+- `filter_backends` কিভাবে কাজ করে
+- Prefix ( ^ @ = \$ ) মানে কী
 
 তোমার DRF প্রজেক্টে ফিল্টারিং এখন হবে একদম প্রফেশনাল লেভেলের। ✅
-
 
 ---
 
 ## ✅ Day 17: Pagination
-* PageNumberPagination
-* LimitOffsetPagination
-* Custom Pagination Class
+
+- PageNumberPagination
+- LimitOffsetPagination
+- Custom Pagination Class
 
 ---
 
 ### 🔹 Pagination কেন দরকার?
 
-যখন Queryset বড় হয় (১০০০+ record), তখন পুরো dataset return করলে performance খারাপ হয়। তাই আমরা **pagination** ব্যবহার করি — অর্থাৎ **একসাথে সব না পাঠিয়ে, প্রতি বার কিছু কিছু করে পাঠানো**।
+যখন Queryset বড় হয় (১০০০+ record), তখন পুরো dataset return করলে performance খারাপ হয়। তাই আমরা
+**pagination** ব্যবহার করি — অর্থাৎ **একসাথে সব না পাঠিয়ে, প্রতি বার কিছু কিছু করে পাঠানো**।
 
 ---
 
 ### 🔹 Pagination DRF-এ কিভাবে কাজ করে?
 
-DRF-এর যেকোনো `ListAPIView`, `ModelViewSet` বা `ListModelMixin` এ pagination অটোমেটিক কাজ করে যদি pagination class সেট করা থাকে।
+DRF-এর যেকোনো `ListAPIView`, `ModelViewSet` বা `ListModelMixin` এ pagination অটোমেটিক কাজ করে যদি
+pagination class সেট করা থাকে।
 
 Pagination class-এর মূল কাজ:
 
-* কোন page কত item দেখাবে তা নিয়ন্ত্রণ করা
-* Response format ঠিক করে দেওয়া
+- কোন page কত item দেখাবে তা নিয়ন্ত্রণ করা
+- Response format ঠিক করে দেওয়া
 
 ---
 
@@ -4136,9 +4143,11 @@ Pagination class-এর মূল কাজ:
 
 #### ✅ ব্যবহার করো যখন:
 
-* তুমি চাই pagination `?page=2` এর মতন হবে
-* Fixed item per page চাও
-* পেজ বানাতে চাও বই এর মতো যে কয়েকটা লাইন মিলে একটা পেজ বানায় আবার আবার কয়েকটা পেজ মিলে একটা বই বানায় এক্ষেত্রে লাইন হলো মডেল অবজেক্ট আর বই হলো queryset আমরা params এ বলে দিতে পারি যে আমরা কয় নম্বর পেজ এর ডাটা নিতে চাই।
+- তুমি চাই pagination `?page=2` এর মতন হবে
+- Fixed item per page চাও
+- পেজ বানাতে চাও বই এর মতো যে কয়েকটা লাইন মিলে একটা পেজ বানায় আবার আবার কয়েকটা পেজ মিলে একটা বই
+  বানায় এক্ষেত্রে লাইন হলো মডেল অবজেক্ট আর বই হলো queryset আমরা params এ বলে দিতে পারি যে আমরা কয়
+  নম্বর পেজ এর ডাটা নিতে চাই।
 
 #### ✅ Global Setup (settings.py):
 
@@ -4179,8 +4188,8 @@ class ProductListAPIView(generics.ListAPIView):
 
 #### ✅ ব্যবহার করো যখন:
 
-* তুমি চাই user বলে দিবে কয়টা skip(offset) করে কয়টা item(limit) নিবে
-* URL হবে `?limit=10&offset=30`
+- তুমি চাই user বলে দিবে কয়টা skip(offset) করে কয়টা item(limit) নিবে
+- URL হবে `?limit=10&offset=30`
 
 #### ✅ Global Setup:
 
@@ -4220,8 +4229,8 @@ class ProductListAPIView(generics.ListAPIView):
 
 #### ✅ Custom Class বানানোর কারন:
 
-* তুমি চাই JSON এর format পুরোপুরি নিজের মতন করো
-* Custom page\_size, max\_limit দিতে পারো
+- তুমি চাই JSON এর format পুরোপুরি নিজের মতন করো
+- Custom page_size, max_limit দিতে পারো
 
 #### ✅ উদাহরণ:
 
@@ -4273,15 +4282,15 @@ class CustomPagination(PageNumberPagination):
 
 #### 🔹 Pagination Important Parameters
 
-| Parameter               | কাজ কী করে                             |
-| ----------------------- | -------------------------------------- |
-| `page_size`             | প্রতি পেজে কয়টা item থাকবে             |
-| `page_size_query_param` | client-side থেকে page\_size চেঞ্জ করতে |
-| `max_page_size`         | client কতো বড় page\_size দিতে পারবে    |
-| `page_query_param`      | default `?page=` এর নাম চেঞ্জ করতে     |
-| `limit_query_param`     | default `?limit=` নাম চেঞ্জ করতে       |
-| `offset_query_param`    | default `?offset=` নাম চেঞ্জ করতে      |
-| `default_limit`         | initial limit মান                      |
+| Parameter               | কাজ কী করে                            |
+| ----------------------- | ------------------------------------- |
+| `page_size`             | প্রতি পেজে কয়টা item থাকবে            |
+| `page_size_query_param` | client-side থেকে page_size চেঞ্জ করতে |
+| `max_page_size`         | client কতো বড় page_size দিতে পারবে    |
+| `page_query_param`      | default `?page=` এর নাম চেঞ্জ করতে    |
+| `limit_query_param`     | default `?limit=` নাম চেঞ্জ করতে      |
+| `offset_query_param`    | default `?offset=` নাম চেঞ্জ করতে     |
+| `default_limit`         | initial limit মান                     |
 
 ---
 
@@ -4289,8 +4298,229 @@ class CustomPagination(PageNumberPagination):
 
 এই হ্যান্ডনোটের মাধ্যমে তুমি এখন শিখে ফেলেছো:
 
-* DRF Pagination কিভাবে কাজ করে
-* Global vs Local Pagination config
-* PageNumberPagination vs LimitOffsetPagination এর পার্থক্য
-* Custom Pagination কীভাবে বানাতে হয়
-* pagination class এর parameter গুলোর কাজ
+- DRF Pagination কিভাবে কাজ করে
+- Global vs Local Pagination config
+- PageNumberPagination vs LimitOffsetPagination এর পার্থক্য
+- Custom Pagination কীভাবে বানাতে হয়
+- pagination class এর parameter গুলোর কাজ
+
+---
+
+## ✅ Day 18: Permissions & Authentication
+
+### 1️⃣ Permission কী?
+
+Permission মানে হলো **কে কোন API endpoint অ্যাক্সেস করতে পারবে, কে পারবে না** — এই নিয়ম নির্ধারণ
+করা। এটা মূলত **Authentication-এর পরবর্তী ধাপ**।
+
+- **Authentication** → ইউজার কে (Identity চেক)
+- **Permission** → এই ইউজার কী করতে পারবে (Access Control)
+
+---
+
+### 2️⃣ Permission কোথায় বসানো যায়?
+
+Permission দুইভাবে বসানো যায় —
+
+| Scope                | কীভাবে বসাবো                                      | প্রভাব                                           |
+| -------------------- | ------------------------------------------------- | ------------------------------------------------ |
+| **Global**           | `settings.py` এ `DEFAULT_PERMISSION_CLASSES` দিয়ে | পুরো প্রজেক্টে ডিফল্টভাবে ওই permission কাজ করবে |
+| **Per View / Local** | `permission_classes` attribute দিয়ে               | শুধু ওই ভিউ বা ভিউসেটে কাজ করবে                  |
+
+#### **Global Example** (`settings.py`)
+
+```python
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ]
+}
+```
+
+#### **Local Example** (ভিউতে)
+
+```python
+from rest_framework.permissions import IsAuthenticated
+
+class MyView(APIView):
+    permission_classes = [IsAuthenticated]
+```
+
+---
+
+### 3️⃣ DRF Built-in Permission Classes
+
+| Permission Class                         | কাজ                                                                           | কখন ব্যবহার করবো                                                                                                                                                  |
+| ---------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **AllowAny**                             | সবাই অ্যাক্সেস করতে পারবে (লগইন লাগবে না)                                     | Public API, Login/Register page                                                                                                                                   |
+| **IsAuthenticated**                      | শুধু লগইন করা ইউজার অ্যাক্সেস পাবে                                            | Protected API যেমন Dashboard                                                                                                                                      |
+| **IsAdminUser**                          | শুধু `is_staff=True` ইউজার অ্যাক্সেস পাবে                                     | Admin Panel API                                                                                                                                                   |
+| **IsAuthenticatedOrReadOnly**            | লগইন ইউজার = সব পারবে, লগইন না করলে = শুধু GET/HEAD/OPTIONS পারবে             | Public read + Private write API                                                                                                                                   |
+| **DjangoModelPermissions**               | Django Model permission system ব্যবহার করে চেক করে                            | যখন User permissions (add, change, delete, view) মডেলে সেট করা আছে                                                                                                |
+| **DjangoModelPermissionsOrAnonReadOnly** | লগইন ইউজার = Model permission অনুযায়ী কাজ করবে, লগইন না করলে = শুধু read-only | Public read, private write with model perms                                                                                                                       |
+| **DjangoObjectPermissions**              | Object-level permission (guardian বা custom) ব্যবহার করে চেক করে              | Row-level security দরকার হলে যেমন যার পোস্ট সে যেন শুধু সেই পোস্টটি retrive,update,delete করতে পারে এমন permissions এর ক্ষেত্রে DjangoObjectPermissions দরকার হয়। |
+
+---
+
+### 4️⃣ Permission কাজের Flow (Internally)
+
+DRF যখন **APIView / GenericAPIView** চালায়, তখন এর মধ্যে এই প্রসেস হয়:
+
+1. ভিউ কল হওয়ার আগে → `APIView.dispatch()` → `self.check_permissions(request)` কল হয়
+2. `check_permissions` → লুপ চালিয়ে সব `permission_classes` এর `has_permission(request, view)` চেক
+   করে
+3. যদি `has_permission` **False** দেয় → `PermissionDenied` exception তুলে দেয় (HTTP 403)
+4. যদি object-level permission লাগে (Retrieve/Update/Delete) →
+   `check_object_permissions(request, obj)` কল হয়
+5. `check_object_permissions` → প্রতিটি `permission_classes` এর
+   `has_object_permission(request, view, obj)` চেক করে
+6. Fail হলে → `PermissionDenied`
+
+### 🎯 Permission কাজের ডায়াগ্রাম
+
+```pgsql
+
+        ┌────────────────────────────────┐
+        │  Request আসে (APIView / GenericAPIView) │
+        └────────────────────────────────┘
+                         │
+                         ▼
+           ┌──────────────────────────┐
+           │  dispatch() কল হয়        │
+           └──────────────────────────┘
+                         │
+                         ▼
+      ┌────────────────────────────────────┐
+      │  self.check_permissions(request)   │
+      └────────────────────────────────────┘
+                         │
+         ┌───────────────────────────────────────────┐
+         │  Loop করে প্রতিটি permission_classes চেক করে │
+         │  has_permission(request, view)              │
+         └───────────────────────────────────────────┘
+                         │
+       ┌──────────────┐              ┌──────────────┐
+       │ True হলে →   │              │ False হলে →  │
+       │ পরের স্টেপে  │              │ PermissionDenied│
+       │ যাবে         │              │ (HTTP 403)    │
+       └──────────────┘              └──────────────┘
+                         │
+                         ▼
+       ┌────────────────────────────────────────────┐
+       │  যদি Object-level permission দরকার হয়       │
+       │  (Retrieve / Update / Delete এর সময়)        │
+       └────────────────────────────────────────────┘
+                         │
+                         ▼
+   ┌─────────────────────────────────────────────┐
+   │  self.check_object_permissions(request, obj)│
+   └─────────────────────────────────────────────┘
+                         │
+         ┌──────────────────────────────────────────┐
+         │  Loop করে প্রতিটি permission_classes চেক করে│
+         │  has_object_permission(request, view, obj) │
+         └──────────────────────────────────────────┘
+                         │
+       ┌──────────────┐              ┌──────────────┐
+       │ True হলে →   │              │ False হলে →  │
+       │ ভিউ চলবে    │              │ PermissionDenied│
+       │ (সাকসেস)    │              │ (HTTP 403)    │
+       └──────────────┘              └──────────────┘
+```
+
+---
+
+### 5️⃣ Method: `has_permission()` vs `has_object_permission()`
+
+| Method                                            | কবে কল হয়                                                 | প্যারামিটার        | কী return করবে                      |
+| ------------------------------------------------- | --------------------------------------------------------- | ------------------ | ----------------------------------- |
+| `has_permission(self, request, view)`             | ভিউ অ্যাক্সেসের আগে                                       | request, view      | **True** (Allow) / **False** (Deny) |
+| `has_object_permission(self, request, view, obj)` | নির্দিষ্ট object অ্যাক্সেসের সময় (Retrieve/Update/Delete) | request, view, obj | True / False                        |
+
+---
+
+### 6️⃣ Custom Permission বানানো
+
+#### Example: শুধু owner data দেখতে পারবে
+
+```python
+from rest_framework.permissions import BasePermission
+
+class IsOwnerOnly(BasePermission):
+    def has_permission(self, request, view):
+        # শুধু authenticated ইউজারকে allow করবো
+        return request.user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        # Object র owner হলে allow করবো বা একটা ব্লগ /post  এর owner এ শুধু retrive /delete /আপডেট করতে পারবে।
+        return obj.owner == request.user
+```
+
+**Use in view:**
+
+```python
+class MyDetailView(RetrieveUpdateAPIView):
+    permission_classes = [IsOwnerOnly]
+    queryset = MyModel.objects.all()
+```
+
+---
+
+### 7️⃣ Table — সব Permission এর Summary
+
+| Class                                | Login দরকার? | Admin লাগবে? | Object level? | Public Read? |
+| ------------------------------------ | ------------ | ------------ | ------------- | ------------ |
+| AllowAny                             | ❌           | ❌           | ❌            | ✅           |
+| IsAuthenticated                      | ✅           | ❌           | ❌            | ❌           |
+| IsAdminUser                          | ✅           | ✅           | ❌            | ❌           |
+| IsAuthenticatedOrReadOnly            | Optional     | ❌           | ❌            | ✅           |
+| DjangoModelPermissions               | ✅           | ❌           | ❌            | ❌           |
+| DjangoModelPermissionsOrAnonReadOnly | Optional     | ❌           | ❌            | ✅           |
+| DjangoObjectPermissions              | ✅           | ❌           | ✅            | ❌           |
+
+---
+
+### 8️⃣ বাস্তবে কোনটা কবে ব্যবহার করবো?
+
+- **Public API** → `AllowAny`
+- **Login প্রয়োজন** → `IsAuthenticated`
+- **শুধু Admin ইউজার** → `IsAdminUser`
+- **Public Read + Private Write** → `IsAuthenticatedOrReadOnly`
+- **Django admin perms control** → `DjangoModelPermissions`
+- **Public read + model perms write** → `DjangoModelPermissionsOrAnonReadOnly`
+- **Owner / Row-level control** → Custom permission + `has_object_permission`
+
+---
+
+### 9️⃣ Shortcut কোড — Global + Local Example
+
+```python
+# settings.py (Global)
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ]
+}
+
+# views.py (Local Override)
+from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
+from rest_framework.views import APIView
+
+class PublicView(APIView):
+    permission_classes = [AllowAny]
+
+class MixedView(APIView):
+    permission_classes = [IsAuthenticatedOrReadOnly]
+```
+
+---
+
+### 🔟 গুরুত্বপূর্ণ কথা
+
+- **Permission সবসময় Authentication-এর পরে চেক হয়**
+- **Permission fail করলে DRF 403 Forbidden রিটার্ন করে**
+- **Custom permission বানালে True/False return করতেই হবে**
+- Object level permission শুধু detail views এ চেক হয়, list view-তে না
+- একাধিক permission দিলে → সবগুলো **AND condition** হয়।
+
+---
