@@ -4920,3 +4920,807 @@ Authorization: Token e52ad8f945cf...
 হবে, টোকেন ব্যবহার করতে হবে, error মেসেজে বেশি তথ্য না দিতে হবে।
 
 ---
+
+## ✅ Day 20: JWT Authentication
+
+### 0️⃣ JWT কেন লাগবে?
+
+- **BasicAuthentication** → প্রতিবার Request এ ইউজারনেম+পাসওয়ার্ড পাঠাতে হয় (Insecure & Slow)
+- **SessionAuthentication** → শুধু ব্রাউজারে কাজ করে (Server memory ধরে রাখে, scalable না)
+- **TokenAuthentication** → Server-side database এ token সংরক্ষণ হয় (প্রতিটি user এর জন্য token
+  table এ থাকে) প্রতিবার DB hit হয় → কিছুটা slow Token leak হলে যতক্ষণ না server-side থেকে revoke
+  করা হয়, ততক্ষণ valid থাকে
+- **JWT (JSON Web Token)** → Stateless, Mobile + SPA (React, Vue, Angular) এ Perfect, Server এ সেশন
+  রাখতে হয় না, একবার Login করলে Access Token দিয়ে কাজ চলে।db create হয় না তাই DB query লাগে না
+  (token verify server-side secret key দিয়েই হয়)
+
+> তাই **JWT Authentication** প্রজেক্টে লাগবে যখন API কে Mobile App বা SPA এ ইউজ করবো আর Server এ
+> সেশন মেইনটেইন করতে চাই না।
+
+## `note` _যে কোন অথেনটিকেশন এর কাজ হলো রিকোয়েস্ট এ থাকা হেডার দেখে তার মতো করে তার কাঙ্কিত হেডার দিয়া ইউসার detect করা এরপর সেই ইউসার instance request.user এ সেট করা_
+
+### 1️⃣ JWT এর মূল ধারণা
+
+JWT = **Header.Payload.Signature** (ডট দিয়ে আলাদা)
+
+- **Header** → Algorithm + Token type (যেমন HS256, JWT)
+- **Payload** → Data (যেমন user id, email, expiry time)
+- **Signature** → Verify করে ডাটা পরিবর্তন হয়নি কিনা
+
+---
+
+### 2️⃣ SimpleJWT ইনস্টল ও কনফিগ
+
+**Step 1: Install**
+
+```bash
+pip install djangorestframework-simplejwt
+```
+
+🔹 কেন? — Django REST Framework এ JWT হ্যান্ডেল করার জন্য আলাদা লাইব্রেরি দরকার।
+
+---
+
+**Step 2: settings.py এ কনফিগ**
+
+```python
+INSTALLED_APPS = [
+    'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',  # Token blacklist support
+]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
+}
+```
+
+🔹 কেন? — `DEFAULT_AUTHENTICATION_CLASSES` এ JWT সেট করলে DRF বুঝবে যে API তে JWT Auth ব্যবহার
+হচ্ছে। 🔹 না করলে? — DRF ডিফল্ট হিসেবে SessionAuth বা BasicAuth ব্যবহার করবে।
+
+---
+
+**Step 3: urls.py এ JWT এর URL যোগ করা**
+
+```python
+from django.urls import path
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,  # Access + Refresh token তৈরি
+    TokenRefreshView,     # Refresh token দিয়ে নতুন Access token
+    TokenBlacklistView,   # Token blacklist (logout)
+)
+
+urlpatterns = [
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/token/blacklist/', TokenBlacklistView.as_view(), name='token_blacklist'),
+]
+```
+
+🔹 কেন? — ইউজারকে লগইন করাতে, রিফ্রেশ করাতে, আর লগআউট করতে এই ৩টা এন্ডপয়েন্ট লাগবে।
+
+---
+
+**Step 4: Access & Refresh Token ব্যাখ্যা**
+
+- **Access Token** → অল্প সময়ের জন্য Valid (যেমন 5 মিনিট) → API তে ব্যবহার হয়
+- **Refresh Token** → বড় সময়ের জন্য Valid (যেমন 1 দিন) → নতুন Access Token জেনারেট করতে লাগে
+- **Blacklist** → লগআউট করলে Refresh Token ব্ল্যাকলিস্ট করে দেয়, যাতে ভবিষ্যতে কেউ ইউজ না করতে পারে।
+  secuerity স্ট্রং করার জন্য।
+
+---
+
+**Step 5: টোকেন তৈরি (Login)** POST → `/api/token/`
+
+```json
+{
+  "username": "mostakin",
+  "password": "1234"
+}
+```
+
+Response:
+
+```json
+{
+  "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJI...",
+  "refresh": "eyJ0eXAiOiJKV1QiLCJhbGc..."
+}
+```
+
+🔹 কেন? — Access token API request এ ব্যবহার করব, Refresh token নতুন Access token পাওয়ার জন্য।
+
+---
+
+**Step 6: API এ JWT Token ব্যবহার করা** Request Header এ:
+
+```
+Authorization: Bearer <access_token>
+```
+
+🔹 না দিলে? — API বলবে `"Authentication credentials were not provided."`
+
+---
+
+**Step 7: Refresh Token ব্যবহার** POST → `/api/token/refresh/`
+
+```json
+{
+  "refresh": "<refresh_token>"
+}
+```
+
+Response:
+
+```json
+{
+  "access": "<new_access_token>"
+}
+```
+
+---
+
+**Step 8: Logout (Blacklist)** POST → `/api/token/blacklist/`
+
+```json
+{
+  "refresh": "<refresh_token>"
+}
+```
+
+🔹 কেন? — Logout করলে টোকেন ব্ল্যাকলিস্ট করতে হবে, না করলে পুরনো টোকেন এখনো কাজ করবে।যেই টোকেন এর
+মাদ্ধমে ইউসার কোয়েরি চালাচ্ছিল এবং logout করলো সেই টোকেন এখনো কাজ করবে।যতক্ষণ না expire হচ্চে টোকেন।
+
+---
+
+### 3️⃣ BasicAuthentication vs SessionAuthentication vs JWTAuthentication
+
+| Feature      | BasicAuth                         | SessionAuth                     | JWTAuth                           |
+| ------------ | --------------------------------- | ------------------------------- | --------------------------------- |
+| Login Method | Username+Password প্রতিবার পাঠানো | একবার Login → Session ID Cookie | একবার Login → JWT Token           |
+| Storage      | No storage (Stateless)            | Server memory                   | Client-side (localStorage/cookie) |
+| Best for     | Quick API test                    | Web apps (Django Template)      | SPA / Mobile apps                 |
+| Drawback     | প্রতিবার পাসওয়ার্ড পাঠানো লাগে    | Server load বেশি                | টোকেন expire হলে refresh করতে হয়  |
+
+---
+
+### 🔍 TokenAuthentication vs JWT Authentication
+
+| বিষয়              | TokenAuthentication                                                               | JWT Authentication                                                                    |
+| ----------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| **Token storage** | Server-side database এ token সংরক্ষণ হয় (প্রতিটি user এর জন্য token table এ থাকে) | Server কোনো token store করে না (Stateless) — token এর ভেতরেই সব তথ্য থাকে             |
+| **Scalability**   | কম scalable, কারণ প্রতিবার request এ server কে DB চেক করতে হয়                     | Highly scalable, কারণ DB query লাগে না (token verify server-side secret key দিয়েই হয়) |
+| **Logout**        | Server থেকে token delete করলে সাথে সাথেই logout করা যায়                           | Logout করার জন্য token blacklist system লাগবে (নইলে expiry পর্যন্ত valid থাকবে)       |
+| **Security**      | Token leak হলে যতক্ষণ না server-side থেকে revoke করা হয়, ততক্ষণ valid থাকে        | Token leak হলে expiry পর্যন্ত valid — তবে expiry ছোট করে রাখা যায়                     |
+| **Performance**   | প্রতিবার DB hit হয় → কিছুটা slow                                                  | DB hit লাগে না → faster                                                               |
+| **Use case**      | ছোট project, কম API call, server এর সাথে সবসময় connection আছে                     | Large scale API, Mobile App, SPA (React, Vue, Angular)                                |
+
+### 4️⃣ Authentication Flow Diagram
+
+#### 🔹 BasicAuthentication Flow
+
+```
+Client → [username+password] → Server → Verify user → Response
+```
+
+(প্রতিবার request এ username+password যায়)
+
+---
+
+#### 🔹 SessionAuthentication Flow
+
+```
+Login Request → Server → Create Session → Cookie সেট
+পরের request → Cookie (Session ID) দিয়ে Server verify
+```
+
+(শুধু ব্রাউজারে ভালো কাজ করে)
+
+---
+
+#### 🔹 JWTAuthentication Flow
+
+```
+Login → Server → Access + Refresh token issue
+API request → Access token দিয়ে verify #by using server side secret key
+Access expire → Refresh token দিয়ে নতুন Access
+Logout → Refresh token blacklist
+```
+
+---
+
+### 5️⃣ কবে কোনটা ব্যবহার করব?
+
+- **BasicAuth** → শুধু টেস্ট করার সময় বা খুব ছোট API এর জন্য (প্রোডাকশনে না)
+- **SessionAuth** → Django Template ভিত্তিক ওয়েব অ্যাপের জন্য
+- **JWTAuth** → SPA (React/Vue/Angular) বা Mobile app + scalable API এর জন্য
+
+---
+
+### 6️⃣ যদি না করতাম?
+
+- **JWT ছাড়া** → Mobile app এ সিকিউরভাবে Auth করা কঠিন
+- **Blacklist ছাড়া** → Logout করলেও পুরনো টোকেন দিয়ে অ্যাক্সেস পাওয়া যেত
+- **Refresh token ছাড়া** → Access expire হয়ে গেলে ইউজারকে বারবার Login করতে হত
+
+---
+
+## ✅ Day 21: JWT Advanced & Security (Django + DRF + SimpleJWT)
+
+- Token expiry setup, refresh endpoint
+- Token from headers
+- Login/logout with JWT
+
+### 1 ) Token lifetime & SIMPLE_JWT config (security options)
+
+`settings.py` এ কিছু recommended settings:
+
+```python
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,  # production এ alernative: private key for RS256
+    'VERIFYING_KEY': None,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    'UPDATE_LAST_LOGIN': False,
+}
+```
+
+**ব্যাখ্যা (step-by-step)**
+
+- `ACCESS_TOKEN_LIFETIME`: ছোট করে রাখো (5–15 মিনিট)। যদি কিছু বেশি security দরকার → কম রাখো।
+- `REFRESH_TOKEN_LIFETIME`: ইউজারকে বারবার লগইন না করাতে একটু বড় (৩–১৪ দিন) করা যায়।
+- `ROTATE_REFRESH_TOKENS`: True করলে refresh use করলে নতুন refresh ইস্যু হবে। পুরনো token blacklist
+  করলে reuse detect করা যাবে।
+- `BLACKLIST_AFTER_ROTATION`: True হলে পুরনো refresh token ব্ল্যাকলিস্ট করা হবে।
+- `ALGORITHM`: HS256 সাধারণ; production এ microservice architecture থাকলে RS256 (asymmetric) use করা
+  উত্তম — তখন একটি private key দিয়ে sign ও public key দিয়ে verify করা যায়।
+- `AUTH_HEADER_TYPES`: default ('Bearer',) -> Authorization: Bearer <token>
+
+---
+
+### 2 ) Endpoint ও view — SignUp, Login, Refresh, Logout
+
+#### 2.1 SignUp (User create)
+
+**serializer.py**
+
+```python
+from rest_framework import serializers
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+ # jodi register er maddhome direct login er dorkar hoy
+        '''
+        from rest_framework_simplejwt.tokens import RefreshToken
+       from rest_framework_simplejwt.exceptions import  AuthenticationFailed
+
+def get_tokens_for_user(user):
+    if not user.is_active:
+      raise AuthenticationFailed("User is not active")
+
+    refresh = RefreshToken.for_user(user)
+
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+    }
+        '''
+
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, min_length=8)
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'password')
+
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data.get('email'),
+            password=validated_data['password']
+        )
+       tokens=get_tokens_for_user(user)  # jodi register er maddhome direct login er dorkar hoy
+        return {'user':user,'tokens':tokens}
+```
+
+**কেন?** — `create_user` Django built-in পাসওয়ার্ড হ্যাশিং করে দেয়, সরাসরি `User.objects.create()`
+না করে।
+
+**view\.py**
+
+```python
+from rest_framework.generics import CreateAPIView
+from .serializers import RegisterSerializer
+
+class RegisterView(CreateAPIView):
+    serializer_class = RegisterSerializer
+```
+
+**urls.py**
+
+```python
+from django.urls import path
+from .views import RegisterView
+
+urlpatterns = [
+    path('api/auth/register/', RegisterView.as_view(), name='register'),
+]
+```
+
+### 2.2 Login — TokenObtainPair (customize to include user info)
+
+SimpleJWT এর `TokenObtainPairView` ব্যবহার করব, কিন্তু response এ user info যোগ করতে চাইলে custom
+serializer তৈরি করব।
+
+```python
+# serializers.py
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        # এখানে additional claims যোগ করা যাবে
+        token['username'] = user.username
+        return token
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data.update({'user': {
+            'id': self.user.id,
+            'username': self.user.username,
+            'email': self.user.email,
+        }})
+        return data
+```
+
+```python
+# views.py
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import MyTokenObtainPairSerializer
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer
+```
+
+**urls.py**
+
+```python
+from rest_framework_simplejwt.views import TokenRefreshView
+from .views import MyTokenObtainPairView
+
+urlpatterns += [
+    path('api/auth/token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+]
+```
+
+**অথবা ম্যানুয়াল create করে লগইন**
+
+```python
+#serializer.py
+from rest_framework import serializers
+from account.models import User
+from django.utils.encoding import smart_str, force_bytes, DjangoUnicodeDecodeError
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from account.utils import Util
+
+class UserLoginSerializer(serializers.ModelSerializer):
+  email = serializers.EmailField(max_length=255)
+  class Meta:
+    model = User
+    fields = ['email', 'password']
+
+
+#view.py
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.views import APIView
+from account.serializers import SendPasswordResetEmailSerializer, UserChangePasswordSerializer, UserLoginSerializer, UserPasswordResetSerializer, UserProfileSerializer, UserRegistrationSerializer
+from django.contrib.auth import authenticate
+from account.renderers import UserRenderer
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import IsAuthenticated
+
+# Generate Token Manually
+def get_tokens_for_user(user):
+  refresh = RefreshToken.for_user(user)
+  return {
+      'refresh': str(refresh),
+      'access': str(refresh.access_token),
+  }
+
+class UserLoginView(APIView):
+  def post(self, request, format=None):
+    serializer = UserLoginSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    email = serializer.data.get('email')
+    password = serializer.data.get('password')
+    user = authenticate(email=email, password=password)
+    if user is not None:
+      token = get_tokens_for_user(user)
+      return Response({'token':token, 'msg':'Login Success'}, status=status.HTTP_200_OK)
+    else:
+      return Response({'errors':{'non_field_errors':['Email or Password is not Valid']}}, status=status.HTTP_404_NOT_FOUND)
+
+**urls.py**
+urlpatterns += [
+     path('login/', UserLoginView.as_view(), name='login'),
+]
+```
+
+### 2.3 Logout — blacklist
+
+```python
+# auth_app/serializers.py
+from rest_framework import serializers
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.exceptions import ValidationError
+
+class LogoutSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+
+    def validate(self, attrs):
+        self.token = attrs.get("refresh")
+        return attrs
+
+    def save(self, **kwargs):
+        try:
+            token = RefreshToken(self.token)
+            token.blacklist()
+        except Exception:
+            raise ValidationError("Invalid or expired token!")
+
+# auth_app/views.py
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .serializers import LogoutSerializer
+from rest_framework.permissions import IsAuthenticated
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]  # Access token লাগবে
+
+    def post(self, request):
+        serializer = LogoutSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"message": "Logged out successfully"}, status=status.HTTP_205_RESET_CONTENT)
+
+
+# auth_app/urls.py
+from django.urls import path
+from .views import LogoutView
+
+urlpatterns = [
+    path("logout/", LogoutView.as_view(), name="logout"),
+]
+
+```
+
+**কেন?** — ব্ল্যাকলিস্ট করা না থাকলে Refresh token দিয়ে আবার Access পেয়ে যাওয়া যাবে।
+
+---
+
+#### 3) Token from Headers vs Cookie — কোথায় token রাখব, কিভাবে নিবো
+
+##### 3.1 Default (Headers)
+
+**Header format:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**curl example:**
+
+```bash
+curl -H "Authorization: Bearer $ACCESS" http://localhost:8000/api/protected/
+```
+
+**কেন?** — সহজ ও স্ট্যান্ডার্ড। ক্লায়েন্ট (frontend/mobile) এই header দিয়ে পাঠায়।
+
+#### 3.2 Cookie-based approach (safer against XSS if done right)
+
+**বেস্ট প্র্যাকটিস:**
+
+- `refresh` token রাখো **HttpOnly cookie**-তে (JavaScript থেকে না পড়া যায়) — XSS হলে attacker JS
+  দিয়ে cookie নিতে পারবে না।
+- `access` token রাখো memory (JS variable) বা short-lived HttpOnly cookie।
+- Use CSRF protection on refresh endpoint if refresh token in cookie.
+
+**Login view (cookie-set) উদাহরণ:**
+
+```python
+class CookieTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        # response.data has 'access' and 'refresh'
+        refresh = response.data.get('refresh')
+        access = response.data.get('access')
+        # set HttpOnly secure cookie for refresh
+        response.set_cookie(
+            key='refresh',
+            value=refresh,
+            httponly=True,
+            secure=True,      # production: True
+            samesite='Lax',
+            max_age=7*24*3600,
+        )
+        # optionally set access token too (or keep in JS memory)
+        # remove refresh from JSON body so JS can't read it
+        response.data.pop('refresh', None)
+        return response
+```
+
+**Custom authentication to read token from cookie (if you want access token from cookie):**
+
+```python
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+class CookieJWTAuthentication(JWTAuthentication):
+    def authenticate(self, request):
+        # First try default header
+        header = self.get_header(request)
+      if header is None:
+        # header না থাকলে এখানে কুকি থেকে টোকেন নেওয়া হবে
+         raw_token = request.COOKIES.get('access') or request.COOKIES.get('refresh')
+         if raw_token is None:
+           return None  # কুকিতেও না থাকলে কোনো অথেন্টিকেশন হবে না
+         validated_token = self.get_validated_token(raw_token)
+         return self.get_user(validated_token), validated_token
+       # যদি header থাকে, তাহলে ডিফল্ট JWTAuthentication এর authenticate  মেথড কল হবে
+      return super().authenticate(request)
+
+```
+
+**কেন cookie?** — HttpOnly cookie হলে XSS থেকে নিরাপদ; কিন্তু cookie ব্যবহার করলে CSRF এর ব্যাপারে
+সতর্ক থাকতে হবে। CSRF mitigate করার জন্য refresh endpoint-এ CSRF token check রাখা প্রয়োজন (or use
+double submit cookie pattern)।
+
+**সিদ্ধান্তের নিয়ম (rule of thumb)**
+
+- High security: Refresh token in HttpOnly cookie + short access token in memory.
+- Simpler SPAs: access in memory/local variable, refresh in secure HttpOnly cookie.
+- Avoid storing JWT in localStorage (XSS ঝুঁকি আছে)।
+
+---
+
+### 4) Change password API (detailed)
+
+**Purpose:** Logged-in user password পরিবর্তন করতে ব্যবহার।
+
+```python
+# serializers.py
+from rest_framework import serializers
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, min_length=8)
+
+# views.py
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+class ChangePasswordView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            user = request.user
+            if not user.check_password(serializer.validated_data['old_password']):
+                return Response({'old_password': 'Wrong password.'}, status=status.HTTP_400_BAD_REQUEST)
+            user.set_password(serializer.validated_data['new_password'])
+            user.save()
+            return Response({'detail': 'Password updated successfully.'}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+```
+
+**কেন?**
+
+- `check_password` না করলে কেউ ভুল করে অন্য কেউ পাসওয়ার্ড বদলাবে
+- `set_password` Django পাসওয়ার্ড হ্যাশিং নিশ্চিত করে
+
+---
+
+### 5) Forgot password / Reset password (API) — step by step
+
+**High level:**
+
+1. User email পাঠায় `/password-reset/` → server UID+token জেনারেট করে ইমেইল পাঠায় (link containing
+   uid & token)
+2. User ক্লিক করে frontend page (পাসওয়ার্ড নতুন সেট করার form) → form submit করে
+   `/password-reset-confirm/<uid>/<token>/` API এ
+3. Server token verify করে নতুন পাসওয়ার্ড সেট করে
+
+**১) Password reset request view**
+
+```python
+# views.py
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
+from rest_framework.views import APIView
+from rest_framework.response import Response
+
+User = get_user_model()
+
+class PasswordResetRequestView(APIView):
+    def post(self, request):
+        email = request.data.get('email')
+        user = User.objects.filter(email=email).first()
+        if user:
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            # build frontend url where user will set new password
+            frontend_url = 'https://your-frontend.com/reset-password'
+            reset_link = f"{frontend_url}/{uid}/{token}/"
+            send_mail(
+                subject='Password reset',
+                message=f'Use this link to reset your password: {reset_link}',
+                from_email='no-reply@example.com',
+                recipient_list=[user.email],
+            )
+        # security: always return success message to avoid email enumeration
+        return Response({'detail': 'If an account with that email exists, a reset link has been sent.'})
+```
+
+**২) Password reset confirm view**
+
+```python
+from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_str
+from django.contrib.auth.tokens import default_token_generator
+
+class PasswordResetConfirmView(APIView):
+    def post(self, request, uidb64, token):
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except Exception:
+            return Response({'detail': 'Invalid link.'}, status=400)
+
+        if not default_token_generator.check_token(user, token):
+            return Response({'detail': 'Invalid or expired token.'}, status=400)
+
+        new_password = request.data.get('new_password')
+        if not new_password or len(new_password) < 8:
+            return Response({'detail': 'Password too short.'}, status=400)
+
+        user.set_password(new_password)
+        user.save()
+        return Response({'detail': 'Password has been reset successfully.'})
+```
+
+**কেন?**
+
+- Token + uid base64 দ্বারা user verify করা হয়, এবং token expiry/one-time নিশ্চিত করা হয়
+- ইমেল অবজেকশন থেকে রক্ষা পেতে success message সবসময় রিটার্ন করা হয়
+
+---
+
+### 6) Token revocation & refresh rotation — Deep dive
+
+**Problem:** Refresh token লিক হলে attacker দীর্ঘ সময় ধরে নতুন Access জেনারেট করতে পারবে।
+
+**Solution options:**
+
+1. Short refresh lifetime (কম দিন)
+2. Refresh rotation: প্রতি refresh use এ নতুন refresh ইস্যু হয় এবং পুরনো ব্ল্যাকলিস্ট হয়
+3. Blacklist database: revoked tokenগুলো সার্ভারে রাখা
+4. Detect reuse: যদি আগেই ব্ল্যাকলিস্ট করা token reuse করা হয় → possible compromise → invalidate all
+   sessions
+
+**SimpleJWT config (recap)**
+
+```python
+SIMPLE_JWT.update({
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+})
+```
+
+**কেন?**
+
+- ROTATE_REFRESH_TOKENS=True করলে refresh use করলে নতুন refresh+access দিবে এবং পুরনো ব্ল্যাকলিস্ট
+  হবে (যদি BLACKLIST_AFTER_ROTATION=True থাকে)।
+
+**Logout flow (best practice)**
+
+- Client calls logout API, server blacklists refresh token
+- Server optionally rotate refresh on each refresh so stolen refresh cannot be reused
+
+---
+
+### 7) Advanced security best-practices checklist (A to Z)
+
+- Always use HTTPS in production
+- Keep ACCESS_TOKEN short (minutes)
+- Use REFRESH_TOKEN rotation + blacklist
+- Store refresh token in HttpOnly cookie (reduce XSS risk)
+- Don't store tokens in localStorage (XSS)
+- For cookies set `Secure`, `HttpOnly`, `SameSite=Lax/Strict` as needed
+- Use RS256 with private/public keys if you have microservices and need verifiability without
+  sharing secret
+- Limit scopes/claims in token (minimal privilege)
+- Monitor login/refresh events and detect anomalies
+- Implement brute force protection (rate-limit login endpoint)
+- Revoke tokens on password change (consider update_last_login or force revocation)
+- Consider device-based tokens (store device id with refresh token) for better revocation
+
+---
+
+### 8) Flow diagrams (ASCII) — Quick mental maps
+
+**Login (header based)**
+
+```
+[Client] --POST /auth/token (username+password)--> [Server]
+    Server validate -> issue {access, refresh}
+[Client stores access (in memory) & refresh (HttpOnly cookie or safe store)]
+
+API call:
+[Client] --GET /api/protected with header Authorization: Bearer <access>--> [Server verifies access]
+
+Access expired ->
+[Client] --POST /auth/token/refresh with refresh--> [Server verifies refresh -> issue new access (and maybe refresh if rotate)]
+```
+
+**Logout with blacklist**
+
+```
+[Client] --POST /auth/logout {refresh}--> [Server blacklists refresh]
+Result: future token refresh attempts fail
+```
+
+**Password reset**
+
+```
+[Client] --POST /auth/password-reset {email}--> [Server sends email (uid, token link)]
+User clicks link -> frontend form -> POST /auth/password-reset-confirm/{uid}/{token} with new password -> Server validate token -> set_password
+```
+
+---
+
+### Quick FAQ (short answers)
+
+**Q: Token কোথা থেকে আসবে?** A: Normally `Authorization: Bearer <token>` header থেকে। কিন্তু যদি
+cookie ব্যবহার করতে চাও, custom authentication class লিখে cookie থেকে token validate করতে পারো।
+
+**Q: কেন refresh token blacklist করা লাগবে?** A: যদি কেউ refresh token চুরি করে, ব্ল্যাকলিস্ট না
+থাকলে সেই someone নতুন access জেনারেট করতে পারবে।
+
+**Q: RS256 vs HS256?** A: HS256 symmetric (shared secret). RS256 asymmetric (private-public) —
+microservices এ verification সহজ (প্রত্যেক service কে public key দিতে পারবে)।
+
+---
+
+### শেষ কথা — কি করা উচিত এখনই (practical TODOs)
+
+1. `pip install djangorestframework-simplejwt`
+2. settings.py এ `REST_FRAMEWORK` ও `SIMPLE_JWT` কনফিগ করে নাও
+3. `token_blacklist` migration চালাও: `python manage.py migrate`
+4. Register, TokenObtainPair, TokenRefresh, Logout, ChangePassword, PasswordReset endpoints বানাও
+   (উপরে দেওয়া কোড copy-paste করে চলে)
+5. Local development এ HTTPS না থাকলে cookie `secure=True` করতে পারবে না — production এ অবশ্যই HTTPS
+   ব্যবহার করো
+
+---

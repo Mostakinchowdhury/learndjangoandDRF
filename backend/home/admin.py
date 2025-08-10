@@ -66,7 +66,7 @@ class CustomUserAdmin(UserAdmin):
       # এখানে email প্রথমেই রাখুন
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('Personal Info', {'fields': ('first_name', 'last_name')}),
+        ('Personal Info', {'fields': ('first_name', 'last_name','phone_num')}),
         ('Permissions', {'fields': ('is_staff', 'is_active','is_superuser', 'groups', 'user_permissions')}),
     )
 
@@ -74,7 +74,7 @@ class CustomUserAdmin(UserAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email','username', 'password1', 'password2', 'is_staff', 'is_active','is_superuser')}
+            'fields': ('email','username', 'password1', 'password2', 'is_staff', 'is_active','is_superuser','phone_num')}
         ),
     )
     def get_language(self, obj):

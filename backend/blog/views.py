@@ -6,7 +6,8 @@ from .forms import Blogform
 from django.contrib import messages
 from django.http import HttpResponseForbidden
 from rest_framework.views import APIView
-from .serializer import BlogSerializer,Myserializer,ComentSerializer
+from .serializer import BlogSerializer,Myserializer,ComentSerializer,registerserializer,loginserializer
+from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics,mixins
@@ -18,6 +19,25 @@ from django_filters.rest_framework import DjangoFilterBackend
 User=get_user_model()
 
 # Create your views here.
+
+class registerview(APIView):
+  def post(self,request):
+    serialize=registerserializer(data=request.data)
+    if serialize.is_valid():
+      serialize.save()
+      return Response({"message":"Usercreate successfull"},status=status.HTTP_201_CREATED)
+    else:
+      return Response({"message":serialize.error_messages},status=status.HTTP_400_BAD_REQUEST)
+
+class loginview(APIView):
+  def post(self,request):
+    serialize=loginserializer(data=request.data)
+    if serialize.is_valid():
+      user=serialize.validated_data.get("user")
+      token,created=Token.objects.get_or_create(user=user)
+      return Response({"token":token.key},status=status.HTTP_200_OK)
+    else:
+      return Response(serialize.errors,status=status.HTTP_400_BAD_REQUEST)
 
 @login_required(login_url="home:login")
 def homeview(request):
@@ -136,16 +156,26 @@ class Gatozrud(generics.RetrieveUpdateDestroyAPIView):
 from rest_framework.permissions import IsAuthenticatedOrReadOnly,DjangoModelPermissions,DjangoModelPermissionsOrAnonReadOnly
 from rest_framework.authentication import SessionAuthentication,BasicAuthentication
 from .permission import mypermission
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
 class comentviewset(ModelViewSet):
     queryset = Comment.objects.all()
-    authentication_classes=[SessionAuthentication]
-    permission_classes=[mypermission]
+    authentication_classes=[TokenAuthentication]
+    permission_classes=[IsAuthenticated]
     serializer_class = ComentSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter,DjangoFilterBackend]
     pagination_class=mypagi
     search_fields = ['coment_text']
     ordering_fields = ['coment_date']
     ordering = ['coment_date']
+
+
+class intro(APIView):
+  authentication_classes=[TokenAuthentication]
+  permission_classes=[IsAuthenticated]
+  def get(self,request):
+    serialize=registerserializer(request.user)
+    return Response(serialize.data)
 
 from .filterset import commentFilter
 

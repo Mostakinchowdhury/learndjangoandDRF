@@ -24,4 +24,7 @@ urlpatterns = [
    path('myserializer/', views.Serializertest.as_view(), name="myserializer"),
    path('gatozlc/', views.Gatozlc.as_view(), name="gatozlc"),
    path('gatozrud/<int:pk>', views.Gatozrud.as_view(), name="gatozrud"),
+   path('register/', views.registerview.as_view(), name='register'),
+   path('login/',views.loginview.as_view(), name='login'),
+   path("intro/",views.intro.as_view(),name="intro")
 ]

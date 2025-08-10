@@ -1,6 +1,10 @@
 # blog/serializers.py
 from .models import Blogs,Comment
 from rest_framework import serializers
+from django.contrib.auth import authenticate
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 def valideproductname(value):
   invalid_name=['kichuna','demo','none']
@@ -53,6 +57,31 @@ class Myserializer(serializers.Serializer):
     return data
 
 
+class registerserializer(serializers.ModelSerializer):
+  password=serializers.CharField(write_only=True)
+  class Meta:
+    model=User
+    fields=["email","phone_num","password","username"]
+
+  def create(self, validated_data):
+    user=User(email=validated_data['email'],username=validated_data["username"],phone_num=validated_data['phone_num'])
+    user.set_password(validated_data.get("password"))
+    user.save()
+    return user
+
+
+class loginserializer(serializers.Serializer):
+  email=serializers.EmailField()
+  password=serializers.CharField()
+
+  def validate(self, data):
+    email=data.get("email")
+    password=data.get("password")
+    user=authenticate(email=email,password=password)
+    if user==None:
+      raise serializers.ValidationError("not match")
+    data['user']=user
+    return data
 
 
 
