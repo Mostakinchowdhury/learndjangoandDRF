@@ -5724,3 +5724,843 @@ microservices এ verification সহজ (প্রত্যেক service ক�
    ব্যবহার করো
 
 ---
+
+## ✅ Day 22: File Upload API
+
+- ImageField upload
+
+- media config
+
+- File upload via API
+
+---
+
+### সারমর্ম (What you'll learn)
+
+- `settings.py` এ media কনফিগারেশন
+- `models.ImageField` / `FileField` এবং `upload_to` callable
+- DRF-এ ফাইল আপলোডের জন্য `parser_classes` (MultiPartParser, FormParser)
+- Serializer + ModelViewSet / APIView উদাহরণ
+- মেমোরি, নেমকনফ্লিক্ট, নিরাপত্তা (validation) ও স্টোরেজ ব্যাকএন্ড (local vs S3)
+- JWT authentication কেন দরকার এবং সেটআপ (SimpleJWT) — step-by-step
+- Postman / curl দিয়ে পরীক্ষা এবং ইউনিট টেস্ট করার টিপস
+- সাধারণ সমস্যা ও debugging কৌশল
+
+---
+
+### 0) পূর্বশর্ত
+
+- Python (৩.৮+)
+- Django (৩.২+ ভালো)
+- djangorestframework
+- Pillow (ImageField চালাতে) # by deafalt thake
+- (ঐচ্ছিক) djangorestframework-simplejwt (JWT) এবং django-storages + boto3 (S3 ব্যবহার করলে)
+
+ইনস্টল উদাহরণ:
+
+```bash
+pip install django djangorestframework pillow djangorestframework-simplejwt
+# optional for S3
+pip install django-storages boto3
+```
+
+---
+
+### 1) settings.py — MEDIA কনফিগার
+
+**কেন:** Django-কে জানানো যে মিডিয়া ফাইল কোথায় রাখা হবে এবং কীভাবে URL হবে।
+
+```python
+# settings.py
+import os
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+INSTALLED_APPS += [
+    'rest_framework',
+    # যদি JWT ব্যবহার করো:
+    'rest_framework_simplejwt',
+]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        # 'rest_framework.authentication.SessionAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+}
+
+# যদি S3 ব্যবহার করতে চাও (optional)
+# DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+```
+
+## **নোট:** development এ `DEBUG=True` থাকলে `django.conf.urls.static.static()` ব্যবহার করে media সার্ভ করা উচিত। production এ ওয়েব সার্ভার (nginx, apache) দিয়ে সার্ভ করো।
+
+### 2) urls.py — development এ media সার্ভ
+
+```python
+# project/urls.py
+from django.conf import settings
+from django.conf.urls.static import static
+from django.urls import path, include
+
+urlpatterns = [
+    path('api/', include('myapp.urls')),
+]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+```
+
+**কেন:** development server (runserver) দিয়ে ছবি/ফাইল দেখা যায়। production এ প্রকৃত সার্ভার দিয়ে
+serve করবে।
+
+---
+
+### 3) models.py — FileField / ImageField এবং upload_to
+
+**কেন:** নিরাপদ নাম, নেম কনফ্লিক্ট এড়ানো ও লজিক আলাদা রাখার জন্য `upload_to` callable ব্যবহার করা
+ভাল।
+
+```python
+# myapp/models.py
+import os
+import uuid
+from datetime import datetime
+from django.db import models
+from django.conf import settings
+
+
+def upload_to_uuid_path(instance, filename):
+    """ফাইল নামে uuid যোগ করে, date-based folder এ রাখে। এইভাবে নাম কনফ্লিক্ট এড়ানো যায়।"""
+    ext = filename.split('.')[-1]
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    # path: uploads/2025/08/11/uuid.jpg
+    return os.path.join('uploads', datetime.now().strftime('%Y/%m/%d'), filename)
+
+
+class Photo(models.Model):
+    title = models.CharField(max_length=255, blank=True)
+    image = models.ImageField(upload_to=upload_to_uuid_path)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Photo({self.id})"
+```
+
+**কেন এইভাবে?**
+
+- `uuid` ব্যবহার করলে নাম কনফ্লিক্ট প্রায় চিরতরে শেষ।
+- Date-based folder হলে ফাইল ম্যানেজ করা সহজ হয়।
+- Django এর FileField / ImageField-এ upload_to দুইভাবে দেয়া যায়: `1` string path: "uploads/images/"
+  `2` callable function: upload_to=your_function
+  > `note` Callable হলে Django save করার সময়:
+
+```python
+final_path = upload_to(instance, original_filename)
+```
+
+এইখানে:
+
+instance → model-এর সেই object যেটা save হচ্ছে
+
+filename → user যেটা আপলোড করেছে তার আসল নাম
+
+##### 📌 কেন function দিচ্ছি?
+
+কারণ এখানে আমি চাই dynamic path + unique filename। String দিলে সব ফাইল এক ফোল্ডারে জমা হবে, conflict
+হবে।
+
+- `upload_to` callable দিলে filename logic কাস্টমাইজ করা যায় (e.g., user-id subfolder, hashing
+  ইত্যাদি)।
+
+**বিকল্প:** যদি তুমি চানো ফাইলের নামই রাখা হোক, তাহলে `upload_to='uploads/originals/'` ব্যবহার করতে
+পারো — কিন্তু নেম কনফ্লিক্ট ও ঝুঁকি থাকবে।
+
+---
+
+### 3.1 🎯multicase off upload_to
+
+#### 🔹 1. যদি আমরা upload_to = 'uploads/' string দিই
+
+তাহলে Django এমনভাবে কাজ করে:
+
+```
+image = models.ImageField(upload_to='uploads/')
+```
+
+এর মানে হচ্ছে:
+
+- আপলোড করা ফাইল ‌→ MEDIA_ROOT/uploads/ ডিরেক্টরির মধ্যে যাবে
+
+- ফাইলের original নাম 그대로 রাখা হবে (যেমন photo.jpg)
+
+- যদি একই নামের ফাইল আগেই থাকে, Django নতুন নাম বানিয়ে যেমন photo_1.jpg দিয়ে সেই ফাইল রেখে দেয়
+  (naming conflict avoid করতে)
+
+📌 এটা Django-এর default behavior — internally একটা get_available_name() method দিয়ে চেক করে ফাইল
+আগে আছে কিনা।
+
+❗ সমস্যা:
+
+- একই ফাইল নাম থাকলে conflict হতে পারে
+
+- কেউ যদি malicious নামে ফাইল পাঠায় (../ or special chars), তখন security issue হতে পারে
+
+#### 🔹 2. যদি আমরা upload_to = callable function দিই (যেমন upload_to_uuid_path)
+
+```python
+def upload_to_uuid_path(instance, filename):
+    ext = filename.split('.')[-1]
+    filename = f"{uuid.uuid4().hex}.{ext}"
+
+    return os.path.join('uploads', datetime.now().strftime('%Y/%m/%d'), filename)   """ date_parts = datetime.now().strftime('%Y/%m/%d').split("/")
+path = os.path.join('uploads', *date_parts, 'filename.jpg')
+ """  #best practise karon cross flatform hoy date wise folder hoye oikhane file thake ami nirdisto diner file pete pari
+
+```
+
+এর মানে হচ্ছে:
+
+Django প্রতিটি ফাইল আপলোডের সময় upload_to_uuid_path() function-টি call করে
+
+- এটা instance (model instance) এবং filename (original file name) দুইটাকে argument হিসেবে পায়
+
+- function এর return value হয় relative path (e.g. uploads/2025/08/11/0abac34de1.jpg)
+
+এখন ফাইল যাবে এখানে:
+
+```python
+MEDIA_ROOT/uploads/2025/08/11/<uuid>.jpg
+```
+
+📌 এখানেও Django শেষে check করে যদি ফাইলটা আগেই থেকে থাকে, তাহলে আবার rename করে — কিন্তু uuid থাকায়
+conflict chance কম।
+
+#### ✅ Bottom Line:
+
+| Upload To             | File Path Logic                                | Filename Behavior            | Conflict Avoiding                            |
+| --------------------- | ---------------------------------------------- | ---------------------------- | -------------------------------------------- |
+| `'uploads/'` (string) | MEDIA_ROOT/uploads/original_name.jpg           | original name used           | Django `_1`, `_2` দিয়ে rename করে            |
+| callable function     | Return value: e.g. uploads/2025/08/11/uuid.jpg | custom logic দিয়ে বানানো নাম | uuid দিলে conflict কম, কিন্তু এখনো check করে |
+
+### 3.2 🎯 uuid কীভাবে, কখন, কেন ব্যবহার হয়
+
+uuid → Universally Unique Identifier। uuid.uuid4().hex → random, unique 32-character string।
+
+- uuid হলো Python-এর built-in module — Universally Unique Identifier generate করার জন্য ব্যবহৃত হয়।
+
+- uuid.uuid4() → একটা random UUID object তৈরি করে। এটা UUID version 4 (random)।
+- uuid4() হলো function, — এটা uuid.UUID object এর একটা object return করে যার **str** এ রিটার্ন করা
+  আছে
+
+```python
+def __str__(self):
+    return str(self.hex_formatted_with_hyphens)
+
+```
+
+তাই আমরা এটা অবজেক্ট হয় সর্তেও ডাইরেক্ট প্রিন্ট করতে পারি।
+
+- hex হলো সেই object-এর একটা property → UUID-এর hyphen-less hexadecimal string
+
+- uuid.uuid4().hex → সেই UUID-এর 32-character hexadecimal string দেয় (hyphen ছাড়া)।
+
+```python
+import uuid
+
+u = uuid.uuid4()
+print(u)           # Example: 3f1a3e7b-7647-4d70-8cfd-d72f53d9d49c  ← standard UUID (36 char with hyphens)
+print(u.hex)       # Example: 3f1a3e7b76474d708cfdd72f53d9d49c       ← 32-char hex (no hyphens)
+```
+
+#### কেন দরকার:
+
+- একই নামের ফাইল overwriting এড়াতে।
+
+- URL guessing ঠেকাতে (security)।
+
+#### কখন ব্যবহার করবো:
+
+- Public uploads যেখানে অনেক ইউজার ফাইল আপলোড করবে।
+
+- এমন storage যেখানে একই ফোল্ডারে অনেক ফাইল জমা হবে।
+
+### 3.3 🎯os.path.join() কী এবং কীভাবে কাজ করে
+
+কাজ: Platform-independent ফাইল path বানায় (Windows এ \, Linux/Mac এ / ব্যবহার করে)। একাধিক নেস্টেড
+ফাইল পাথ কে merge করে cross platform এর জন্য। **os.path.join()** হল Python-এর built-in os module-এর
+একটা function, যেটা একাধিক path segment (folder, subfolder, file) কে সঠিকভাবে জোড়া লাগায় (join করে),
+যাতে সেটা ✅ platform-independent হয়।
+
+```python
+os.path.join(path1, path2, ...)
+```
+
+ব্যবহার:
+
+```python
+os.path.join('uploads', '2025', '08', '11', 'file.jpg')
+# Linux এ: uploads/2025/08/11/file.jpg
+# Windows এ: uploads\2025\08\11\file.jpg
+```
+
+📌 কখন ব্যবহার করবো: Hardcoded / না লিখে cross-platform path বানানোর জন্য।
+
+### 3.4 🎯datetime.now() + strftime() এর কাজ
+
+- datetime.now() → বর্তমান তারিখ ও সময় দেয়।
+
+- strftime(format) → সেই তারিখ/সময় কে format করে string বানায়।
+
+```python
+from datetime import datetime
+
+now = datetime.now()
+print(now)  # 2025-08-11 14:35:10 (standard format)
+
+date_path = now.strftime('%Y/%m/%d')
+print(date_path)  # '2025/08/11' (customise_format) jade ata subfolder er moto kaj kore jn protidin er image gula oi date er namer folder e thake ... %Y = year,%m = month ,%d=date
+```
+
+📌 ব্যবহার: ফাইল date-based folder এ রাখার জন্য।
+
+#### 🔧 strftime Format Codes:
+
+| Format | মানে                      | Example |
+| ------ | ------------------------- | ------- |
+| `%Y`   | পূর্ণ সাল (year)          | `2025`  |
+| `%m`   | মাস (2 digit)             | `08`    |
+| `%d`   | দিন                       | `11`    |
+| `%H`   | ঘণ্টা (24 ঘন্টা ফরম্যাটে) | `14`    |
+| `%M`   | মিনিট                     | `35`    |
+| `%S`   | সেকেন্ড                   | `10`    |
+
+## 4) Serializer — ModelSerializer ও validation
+
+**কেন:** Serializer হল API-এ ডাটা ভেরিফাই করার জায়গা। ফাইলের সাইজ, টাইপ ইত্যাদি এখানে validate করা
+উচিত।
+
+```python
+# myapp/serializers.py
+from rest_framework import serializers
+from .models import Photo
+from django.core.exceptions import ValidationError
+
+
+def validate_image_file(image):
+    # size check (২ MB limit উদাহরণ) by deafalt image.size  byte akare thake.
+    max_size = 2 * 1024 * 1024
+    if image.size > max_size:
+        raise ValidationError('Image too large. max 2MB allowed.')
+
+    # content-type check (DRF UploadedFile এ content_type থাকতে পারে)
+    if hasattr(image, 'content_type'):
+        if not image.content_type.startswith('image'):
+            raise ValidationError('Uploaded file is not an image.')
+
+
+class PhotoSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField()
+
+    class Meta:
+        model = Photo
+        fields = ['id', 'title', 'image', 'uploaded_at', 'owner']
+        read_only_fields = ['id', 'uploaded_at', 'owner']
+
+    def validate_image(self, value):
+        validate_image_file(value)
+        return value
+
+    def create(self, validated_data):
+        # caller (view) থেকে owner পাঠান: serializer.save(owner=request.user)
+        return Photo.objects.create(**validated_data)
+```
+
+**নোট:** `validate_image` বা `validate()` এ তোমার সব কাস্টম চেক রাখো — হ্যাকাররা file extension কএ
+বাধাই ফেলে তাই content-based validation ও প্রয়োগ করা উচিত।
+
+---
+
+### 5) Views — APIView vs ViewSet
+
+**কেন:** `APIView` গেলে তুমি পুরো কন্ট্রোল নেবে; `ModelViewSet` দিলে বেশি automation
+(list/retrieve/create) মিলে। কেন `parser_classes` লাগে? কারণ DRF ডিফল্টভাবে JSON parser পছন্দ করে;
+ফাইল পাঠাতে হলে `multipart/form-data` প্রয়োজন।
+
+**APIView উদাহরণ:**
+
+```python
+# myapp/views.py
+from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from .serializers import PhotoSerializer
+
+
+class PhotoUploadView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request, format=None):
+        # request.data will include form fields; file will be in request.FILES
+        serializer = PhotoSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save(owner=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+```
+
+**ModelViewSet উদাহরণ:**
+
+```python
+from rest_framework import viewsets
+
+class PhotoViewSet(viewsets.ModelViewSet):
+    queryset = Photo.objects.all()
+    serializer_class = PhotoSerializer
+    parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+```
+
+**কেন context={'request': request}?**
+
+- Serializer এর ImageField যদি `use_url=True` (ডিফল্ট) হয়, তাহলে full URL (scheme+host) পেতে
+  `request` context দরকার।
+
+### 5.1 🎯 parser_classes
+
+**parser_classes কী?:**
+
+parser_classes হচ্ছে DRF-এ এমন একটা লিস্ট যেখানে আমরা বলে দেই — "এই view-এর incoming request data
+কোন কোন format-এ আসতে পারে, আর সেগুলো parse করার জন্য কোন কোন parser ব্যবহার করতে হবে"।
+
+📌 DRF default parser list:
+
+```python
+'DEFAULT_PARSER_CLASSES': [
+    'rest_framework.parsers.JSONParser',
+    'rest_framework.parsers.FormParser',
+    'rest_framework.parsers.MultiPartParser',
+]
+```
+
+কিন্তু file upload-এর সময় MultiPartParser লাগবেই।
+
+#### কখন parser_classes call হয়?
+
+Flow (APIView থেকে শুরু):
+
+1.Client request পাঠায় (যেমন multipart/form-data)।
+
+2.Django view dispatch → DRF এর APIView.dispatch() → initialize_request()।
+
+3.initialize_request() request object বানানোর সময় বলে:
+
+```python
+request.parsers = [parser() for parser in self.get_parsers()]
+```
+
+**4** .get_parsers() method →
+
+- প্রথমে দেখে view-এ parser_classes সেট করা আছে কিনা।
+
+- থাকলে সেটা নেয়, না থাকলে settings এর DEFAULT_PARSER_CLASSES নেয়। **5**. DRF পরে request.data
+  অ্যাক্সেস করার সময়:
+
+- প্রথমে content-type চেক করে (যেমন multipart/form-data)।
+
+- মিল পাওয়া parser-এর .parse() মেথড call হয়।
+
+- Parser raw stream (request.body) থেকে data পড়ে Python dict বানায়। **6** - MultiPartParser কীভাবে
+  internally কাজ করে?
+
+```python
+class MultiPartParser(BaseParser):
+    media_type = 'multipart/form-data'
+
+    def parse(self, stream, media_type, parser_context):
+        # 1. Parse the boundary from Content-Type header
+        # 2. Use django.http.multipartparser.MultiPartParser
+        #    to split form fields & files
+        data, files = parser.parse()
+        return DataAndFiles(data, files)
+
+```
+
+- এটা Django-এর MultiPartParser (lower-level) কে ব্যবহার করে।
+
+- Boundary দিয়ে request body কেটে form fields vs file parts আলাদা করে।
+
+- Files আলাদা করে UploadedFile অবজেক্টে রাখে, যেটা পরে serializer পায়।
+
+**7** কোথায় parser_classes দরকার?
+
+- File upload (ImageField, FileField)
+
+- HTML form POST/PUT/PATCH যেটা JSON নয়
+
+- Multiple content-type support (e.g., JSON + multipart একই endpoint)
+
+📌 যদি parser_classes না দাও → DRF JSONParser দিয়ে চেষ্টা করবে → multipart parse করতে পারবে না →
+request.data ফাঁকা আসবে।
+
+#### 🔍 Visual flow diagram
+
+```pgsql
+ Client (multipart/form-data)
+       |
+       v
+APIView.dispatch()
+       |
+       v
+initialize_request()
+       |
+       v
+get_parsers() -> [MultiPartParser(), FormParser()]
+       |
+       v
+request.data অ্যাক্সেস করলে:
+       |
+       +--> Content-Type check (multipart/form-data)
+       |
+       +--> MultiPartParser.parse()
+                |
+                +--> django.multipartparser
+                |
+                +--> data + files return
+       |
+       v
+Serializer receives:
+   data = {...}
+   files = { 'file_field': UploadedFile(...) }
+
+```
+
+---
+
+### 6) urls.py — router + token endpoints
+
+```python
+# myapp/urls.py
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import PhotoViewSet, PhotoUploadView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+router = DefaultRouter()
+router.register('photos', PhotoViewSet, basename='photos')
+
+urlpatterns = [
+    path('', include(router.urls)),
+    path('upload/', PhotoUploadView.as_view(), name='photo-upload'),
+
+    # JWT token endpoints
+    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+]
+```
+
+**কেন JWT endpoints?**
+
+- Client প্রথমে `/api/token/` এ username/password দিয়ে POST করে Access + Refresh token পাবে।
+- পরে প্রত্যেকি অনুরোধে `Authorization: Bearer <access_token>` হেডার ব্যবহার করবে।
+
+---
+
+### 7) Multiple files একসাথে আপলোড
+
+**প্যাটার্ন ১ — separate model (recommended):**
+
+- `Attachment` model তৈরি কর যেখানে FileField থাকে এবং parent model-এর সাথে ForeignKey।
+- Client `files[]` নাম দিয়ে multiple files পাঠায়; view এ `request.FILES.getlist('files')` ই ব্যবহার
+  হবে।
+
+```python
+# view handling multiple files
+files = request.FILES.getlist('files')
+for f in files:
+    MyAttachment.objects.create(parent=parent_obj, file=f, owner=request.user)
+```
+
+**প্যাটার্ন ২ — Serializer ListField (non-model):**
+
+```python
+class MultiUploadSerializer(serializers.Serializer):
+    files = serializers.ListField(child=serializers.FileField())
+```
+
+---
+
+### 8) Naming conflict (একোই নাম multiple uploads) — কেন ও কীভাবে handle করব
+
+**সমস্যা:** দুইজন ইউজার একই নামের ফাইল আপলোড করলে ফাইল ওভাররাইট বা কনফ্লিক্ট হতে পারে।
+
+**সমাধানগুলো:**
+
+1. **upload_to callable + uuid** (আমরা উপরে ব্যবহার করেছি) — সবচেয়ে সহজ ও সাধারণ সমাধান।
+2. **custom storage** — `DEFAULT_FILE_STORAGE` কাস্টম করে `get_available_name()` কাস্টমাইজ করা।
+3. **db-backed unique filename** — ফাইল নাম DB তে স্টোর করে unique constraint প্রয়োগ করে।
+
+**কেন uuid ভালো:** নাম ইউনিক হয়, কনফ্লিক্ট নেই, সহজে ফাইল রিট্রাইভ করা যায়।
+
+---
+
+### 9) নিরাপত্তা (Security Checklist)
+
+- **Pillow** দিয়ে image validation: `Image.open()` করে verify() করতে পারো যাতে corrupted বা
+  non-image ফাইল ধরা যায়।
+- **File size limit**: `validate_image_file` এ চেক রাখো এবং server/webserver (nginx) এ limit কনফিগার
+  করো।
+- **Content-type ও magic-bytes চেক**: extension নয়, file signature চেক করো (Pillow helps)।
+- **Serve media via CDN / protected domain**: sensitive files হলে S3 এর presigned URLs ব্যবহার করতে
+  পারো।
+- **Don't store uploaded files inside STATIC_ROOT** — separate MEDIA_ROOT ব্যবহার করো।
+- **Permissions**: media directory-র permission ঠিক রাখো যাতে public execution না হয় (e.g., .py ফাইল
+  এক্সিকিউশন)।
+
+---
+
+### 10) Common pitfalls & debugging
+
+- `request.data` খালি আসে: ভুল parser_classes (নিশ্চিত কর MultiPartParser আছে)
+- ImageField error: `PIL`/`Pillow` নাই — `pip install Pillow`
+- Serializer.data তে URL না আসে: serializer context missing —
+  `serializer = Serializer(instance, context={'request': request})`
+- 413 Request Entity Too Large: nginx/uwsgi/gunicorn এর config adjust করো (e.g.,
+  `client_max_body_size`)
+- Development-এ image serve না হলে: `urlpatterns += static(...)` আছে তো? এবং DEBUG=True?
+
+---
+
+### 11) Testing (Unit tests)
+
+```python
+from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+
+class UploadTest(TestCase):
+    def test_upload(self):
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00'
+            b"\xff\xff\xff\x21\xf9\x04\x00\x00\x00\x00\x00\x2c\x00\x00\x00\x00\x01\x00"
+            b"\x01\x00\x00\x02\x02\x4c\x01\x00\x3b"
+        )
+        uploaded = SimpleUploadedFile('small.gif', small_gif, content_type='image/gif')
+        resp = self.client.post('/api/upload/', {'title': 't', 'image': uploaded})
+        self.assertEqual(resp.status_code, 201)
+```
+
+---
+
+### 12) Advanced: S3 (django-storages) সংক্ষেপে
+
+**কতটা ভিন্ন:** local filesystem বাদ দিয়ে `DEFAULT_FILE_STORAGE` S3 backend করলে ফাইলগুলো S3 এ যাবে।
+
+**settings (সংক্ষেপে):**
+
+```python
+# install: pip install django-storages boto3
+INSTALLED_APPS += ['storages']
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+AWS_ACCESS_KEY_ID = '...'
+AWS_SECRET_ACCESS_KEY = '...'
+AWS_STORAGE_BUCKET_NAME = 'your-bucket'
+AWS_S3_REGION_NAME = 'ap-south-1'
+```
+
+**প্রায় সব লজিক একই থাকে** — কিন্তু তুমি `upload_to` দিয়ে path বানাতে পারো, এবং filename conflict আর
+local FS নিয়ে ভাবতে হবে না (S3 auto-unique path/keys)।
+
+---
+
+### 13) সহজে মনে রাখার জন্য Cheatsheet (Revision-ready checklist)
+
+- [ ] `MEDIA_ROOT` ও `MEDIA_URL` সেট করা আছে?
+- [ ] `Pillow` ইনস্টল করা আছে?
+- [ ] Model এ `ImageField(upload_to=...)` — uuid ব্যবহার করলে conflict নেই
+- [ ] Serializer এ `validate_image()` আছে? file size + content_type চেক কর
+- [ ] View-এ `parser_classes = [MultiPartParser, FormParser]` আছে?
+- [ ] Serializer এ `context={'request': request}` পাস করলে image URL কাজ করবে
+- [ ] JWT: token endpoints যুক্ত আছে? `Authorization: Bearer <token>` ব্যবহার করো
+- [ ] Nginx / production: `client_max_body_size` & media serving নির্ধারণ করা আছে
+
+---
+
+### 14) ছোট্ট কাজের প্রবাহ (Process diagram — ASCII)
+
+```
+Client (app/browser)
+   └─ POST /api/token/ (username/password) -> access_token
+   └─ POST /api/upload/ (multipart/form-data + Authorization: Bearer <token>)
+        -> DRF View (MultiPartParser)
+             -> Serializer (validate_image -> create)
+                 -> Model.save() -> Storage (local/S3)
+                     -> DB এ রেকর্ড
+        <- Response: serialized data (image URL)
+```
+
+---
+
+### 15) অতিরিক্ত টিপস ও বেস্ট-প্র্যাকটিস
+
+- `upload_to` callable দিয়ে ফাইলের নাম কাস্টমাইজ করো (uuid + date). এটা সবচেয়ে সহজ ও নিরাপদ।
+- sensitive/files হলে public URL দেওয়ার আগে permission চেক করো — প্রয়োজনে presigned URL ব্যবহার করো।
+- production এ media serve করার দায়িত্ব ওয়েব সার্ভার/ CDN কে দাও; Django শুধুই অ্যাপ লজিকের জন্য
+  থাকবে।
+- large file uploads হলে resumable upload (tus, chunk uploads) consider করো; নয়তো nginx/gunicorn
+  timeout সমস্যা হতে পারে।
+
+---
+
+## ✅Day 23: Nested Serializer
+
+### 1. **Nested Serializer কী?**
+
+- **Definition:** DRF-এ Nested Serializer মানে হচ্ছে, একটি Serializer-এর মধ্যে আরেকটি Serializer
+  ব্যবহার করা।
+- **Purpose:** যখন Model-এর মধ্যে ForeignKey / OneToMany / ManyToMany Relation থাকে, তখন related
+  data একসাথে serialize করার জন্য nested serializer ব্যবহার হয়।
+
+---
+
+### 2. **Example Scenario**
+
+**User → Orders → Food**
+
+- **User Model**: ইউজারের সাধারণ তথ্য
+- **Order Model**: কোন ইউজার কোন অর্ডার দিয়েছে
+- **Food Model**: অর্ডারের মধ্যে কোন কোন খাবার আছে
+
+Relation:
+
+```
+User 1 -----> Many Orders -----> Each Order has Many Foods
+```
+
+---
+
+#### 3. **Models**
+
+```python
+# models.py
+from django.db import models
+
+class User(models.Model):
+    name = models.CharField(max_length=100)
+    email = models.EmailField(unique=True)
+
+class Food(models.Model):
+    name = models.CharField(max_length=100)
+    price = models.DecimalField(max_digits=6, decimal_places=2)
+
+class Order(models.Model):
+    user = models.ForeignKey(User, related_name='orders', on_delete=models.CASCADE)
+    foods = models.ManyToManyField(Food, related_name='orders')
+    created_at = models.DateTimeField(auto_now_add=True)
+```
+
+💡 **Why related_name ব্যবহার করলাম?**
+
+- related_name দিয়ে reverse relation সহজ হয়।
+- না দিলে `user.order_set.all()` এর মতো ডিফল্ট নাম ব্যবহার করতে হতো।
+- related_name দিলে `user.orders.all()` এর মতো readable হয়।
+
+---
+
+### 4. **Serializers**
+
+```python
+# serializers.py
+from rest_framework import serializers
+from .models import User, Order, Food
+
+class FoodSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Food
+        fields = ['id', 'name', 'price']
+
+class OrderSerializer(serializers.ModelSerializer):
+    foods = FoodSerializer(many=True)  # Nested serializer
+    class Meta:
+        model = Order
+        fields = ['id', 'created_at', 'foods']
+
+class UserSerializer(serializers.ModelSerializer):
+    orders = OrderSerializer(many=True)  # Nested serializer
+    class Meta:
+        model = User
+        fields = ['id', 'name', 'email', 'orders']
+```
+
+💡 **Why Nested Serializer?**
+
+- যদি শুধু `OrderSerializer` ব্যবহার করতাম, তবে foods এর ভেতরে শুধুমাত্র id আসত। Nested দিয়ে
+  foods-এর বিস্তারিতও পাওয়া যায়।
+- না দিলে related data পেতে আলাদা query লাগত (extra API call)।
+
+---
+
+### 5. **Views**
+
+```python
+# views.py
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from .models import User
+from .serializers import UserSerializer
+
+class UserOrdersView(APIView):
+    def get(self, request):
+        users = User.objects.all()
+        serializer = UserSerializer(users, many=True)
+        return Response(serializer.data)
+```
+
+---
+
+### 6. **Output Example**
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Mostakin",
+    "email": "mostakin@example.com",
+    "orders": [
+      {
+        "id": 10,
+        "created_at": "2025-08-11T12:30:00Z",
+        "foods": [
+          { "id": 1, "name": "Pizza", "price": "500.00" },
+          { "id": 2, "name": "Burger", "price": "250.00" }
+        ]
+      }
+    ]
+  }
+]
+```
+
+---
+
+### 7. **Important Notes**
+
+- **read_only=True** দিলে nested data কেবল দেখাবে, create/update হবে না।
+- **many=True** বলতে বোঝায় multiple related objects।
+- Nested Serializer heavy data হলে performance slow হতে পারে — তখন `select_related` /
+  `prefetch_related` ব্যবহার করা উচিত।
+
+---

@@ -3,8 +3,22 @@ from .models import Blogs,Comment
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import AuthenticationFailed
+
+def get_tokens_for_user(user):
+    if not user.is_active:
+      raise AuthenticationFailed("User is not active")
+
+    refresh = RefreshToken.for_user(user)
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+    }
 
 User = get_user_model()
+
+
 
 def valideproductname(value):
   invalid_name=['kichuna','demo','none']
@@ -67,21 +81,59 @@ class registerserializer(serializers.ModelSerializer):
     user=User(email=validated_data['email'],username=validated_data["username"],phone_num=validated_data['phone_num'])
     user.set_password(validated_data.get("password"))
     user.save()
-    return user
+    tokens=get_tokens_for_user(user)
+    return {'token':tokens}
 
 
 class loginserializer(serializers.Serializer):
+  password=serializers.CharField(min_length=8)
   email=serializers.EmailField()
-  password=serializers.CharField()
+  def validate(self, attrs):
+     user=authenticate(email=attrs['email'],password=attrs['password'])
+     if user is not None:
+       attrs['token']=get_tokens_for_user(user)
+     else:
+       raise serializers.ValidationError("Your information not match with any record try again")
 
-  def validate(self, data):
-    email=data.get("email")
-    password=data.get("password")
-    user=authenticate(email=email,password=password)
-    if user==None:
-      raise serializers.ValidationError("not match")
-    data['user']=user
-    return data
+     return attrs
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate_new_password(self, value):
+        if len(value) < 8:
+            raise serializers.ValidationError("Password must be at least 8 characters long")
+        return value
+
+    def validate(self, attrs):
+        user = self.context.get('user')
+        old_password = attrs.get('old_password')
+        new_password = attrs.get('new_password')
+        confirm_password = attrs.get('confirm_password')
+
+        if new_password != confirm_password:
+            raise serializers.ValidationError("New password and confirm password do not match")
+
+        if not user.check_password(old_password):
+            raise serializers.ValidationError("Old password is incorrect")
+
+        return attrs
+
+    def save(self, **kwargs):
+        user = self.context.get('user')
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        return user
+
+
+
+
+
+
+
+
 
 
 

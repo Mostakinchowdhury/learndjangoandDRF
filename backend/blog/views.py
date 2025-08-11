@@ -15,29 +15,52 @@ from rest_framework.viewsets import ModelViewSet,ViewSet,ReadOnlyModelViewSet
 from rest_framework import filters
 from .paginations import mypagi,myoffpagi
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.permissions import AllowAny,IsAuthenticated
 
 User=get_user_model()
 
 # Create your views here.
 
 class registerview(APIView):
+  permission_classes=[AllowAny,]
   def post(self,request):
     serialize=registerserializer(data=request.data)
     if serialize.is_valid():
-      serialize.save()
-      return Response({"message":"Usercreate successfull"},status=status.HTTP_201_CREATED)
-    else:
-      return Response({"message":serialize.error_messages},status=status.HTTP_400_BAD_REQUEST)
-
-class loginview(APIView):
-  def post(self,request):
-    serialize=loginserializer(data=request.data)
-    if serialize.is_valid():
-      user=serialize.validated_data.get("user")
-      token,created=Token.objects.get_or_create(user=user)
-      return Response({"token":token.key},status=status.HTTP_200_OK)
+      mydata=serialize.save()
+      return Response({"message":"user created succesfully",**mydata},status=status.HTTP_201_CREATED)
     else:
       return Response(serialize.errors,status=status.HTTP_400_BAD_REQUEST)
+
+class loginview(APIView):
+  permission_classes=[AllowAny,]
+  def post(self,request):
+    serialize=loginserializer(data=request.data)
+    if serialize.is_valid(raise_exception=True):
+      token=serialize.validated_data.get("token")
+      return Response({"token":token,"message":"success to log in"},status=status.HTTP_200_OK)
+    else:
+      return Response(serialize.errors,status=status.HTTP_400_BAD_REQUEST)
+from .serializer import ChangePasswordSerializer
+class password_change(APIView):
+  permission_classes=[IsAuthenticated,]
+  def post(self,request):
+    serialize=ChangePasswordSerializer(data=request.data, context={'user': request.user})
+    if serialize.is_valid(raise_exception=True):
+      serialize.save()
+      return Response({'message':"your password changed succesfull"},status=status.HTTP_205_RESET_CONTENT)
+    else:
+      return Response(serialize.errors,status=status.HTTP_304_NOT_MODIFIED)
+from rest_framework_simplejwt.tokens import RefreshToken
+class logout(APIView):
+    permission_classes=[IsAuthenticated,]
+    def post(self,request):
+     try:
+       refresh=RefreshToken(request.data["refresh"])
+       refresh.blacklist()
+       return Response({'message':"token add to blacklish and you are succesfully logout"},status=status.HTTP_205_RESET_CONTENT)
+     except Exception as e:
+       return Response({"message":str(e)},status=status.HTTP_400_BAD_REQUEST)
+
 
 @login_required(login_url="home:login")
 def homeview(request):
@@ -157,10 +180,8 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly,DjangoModelPerm
 from rest_framework.authentication import SessionAuthentication,BasicAuthentication
 from .permission import mypermission
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.authentication import TokenAuthentication
 class comentviewset(ModelViewSet):
     queryset = Comment.objects.all()
-    authentication_classes=[TokenAuthentication]
     permission_classes=[IsAuthenticated]
     serializer_class = ComentSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter,DjangoFilterBackend]
@@ -171,7 +192,6 @@ class comentviewset(ModelViewSet):
 
 
 class intro(APIView):
-  authentication_classes=[TokenAuthentication]
   permission_classes=[IsAuthenticated]
   def get(self,request):
     serialize=registerserializer(request.user)
@@ -193,7 +213,6 @@ class readonlycomentviewset(ReadOnlyModelViewSet):
 
 
 class comentset(ViewSet,mixins.ListModelMixin,mixins.CreateModelMixin,generics.GenericAPIView):
-
   queryset=Comment.objects.all()
   serializer_class=ComentSerializer
 
