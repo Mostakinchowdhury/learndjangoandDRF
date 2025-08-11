@@ -6564,3 +6564,130 @@ class UserOrdersView(APIView):
   `prefetch_related` ব্যবহার করা উচিত।
 
 ---
+
+### 8. 🖼 Nested Serializer Data Flow Diagram
+
+```pgsql
+
+┌──────────────────────────┐
+   │  Model Instance (Parent) │   <-- যেমন User instance
+   └─────────────┬────────────┘
+                 │
+        [1] Serializer.to_representation(instance)
+                 │
+                 ▼
+     ┌───────────────────────────┐
+     │ Loop over serializer.fields│
+     └──────────────┬────────────┘
+                    │
+          field_name = "orders"   <-- Nested field
+                    │
+        [2] field.get_attribute(instance)
+                    │
+                    ▼
+     ┌───────────────────────────┐
+     │ getattr(instance, "orders")│
+     │  ↓                         │
+     │ Related Manager (reverse FK)│
+     └──────────────┬─────────────┘
+                    │
+      if many=True and is_related
+                    │
+               .all() কল করে
+                    ▼
+     ┌──────────────────────────┐
+     │ QuerySet of related objs │   <-- Order.objects.filter(user=instance)
+     └──────────────┬───────────┘
+                    │
+       [3] প্রতিটি object এর জন্য:
+                    │
+         child_serializer = OrderSerializer(obj)
+                    │
+     child_serializer.to_representation(obj)
+                    │
+         OrderSerializer-এর মধ্যে আবার:
+                    │
+         field_name = "foods"  <-- আরেকটি nested
+                    │
+            getattr(order, "foods")
+            ↓
+            ManyRelatedManager (.all())
+            ↓
+            QuerySet of Food
+                    │
+         প্রতিটি Food → FoodSerializer(food)
+                    │
+     [4] সব serialize হয়ে nested JSON হয়
+
+```
+
+---
+
+🔍 ধাপে ধাপে ব্যাখ্যা
+
+#### Step 1 — Parent Serializer শুরু হয়
+
+UserSerializer(user_instance).data
+
+DRF to_representation(instance) চালায়।
+
+self.fields থেকে এক এক করে প্রতিটি field বের করে (যেমন id, name, orders)।
+
+---
+
+#### Step 2 — Nested field detect
+
+যখন orders = OrderSerializer(many=True) পাওয়া যায়:
+
+DRF parent instance থেকে এই ফিল্ডের মান বের করতে get_attribute() ব্যবহার করে।
+
+getattr(user_instance, "orders") → এটা related manager (Reverse ForeignKey) ফেরত দেয়।
+
+many=True থাকলে .all() চালিয়ে QuerySet নেয়।
+
+---
+
+#### Step 3 — Child serializer চালানো
+
+প্রতিটি related object (Order) এর জন্য:
+
+নতুন OrderSerializer(order_instance) তৈরি হয়।
+
+এর ভেতরের fields serialize হয়।
+
+যদি আবার nested থাকে (foods = FoodSerializer(many=True)) তবে একই প্রক্রিয়া পুনরাবৃত্তি হয়।
+
+---
+
+#### Step 4 — Deep nesting পর্যন্ত চলতে থাকে
+
+যত লেভেল nested থাকে, DRF recursive ভাবে একই প্রক্রিয়া চালায়।
+
+শেষ পর্যন্ত সব object serialize হয়ে nested JSON রেডি হয়।
+
+---
+
+📦 উদাহরণ
+
+user_instance = User.objects.prefetch_related("orders\_\_foods").first() data =
+UserSerializer(user_instance).data
+
+আউটপুট:
+
+```json
+{
+  "id": 1,
+  "name": "Mostakin",
+  "orders": [
+    {
+      "id": 10,
+      "foods": [
+        { "id": 101, "name": "Burger", "price": 5.0 },
+        { "id": 102, "name": "Pizza", "price": 8.0 }
+      ]
+    }
+  ]
+}
+```
+
+---
