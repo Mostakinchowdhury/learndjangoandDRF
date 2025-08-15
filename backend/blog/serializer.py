@@ -71,18 +71,7 @@ class Myserializer(serializers.Serializer):
     return data
 
 
-class registerserializer(serializers.ModelSerializer):
-  password=serializers.CharField(write_only=True)
-  class Meta:
-    model=User
-    fields=["email","phone_num","password","username"]
 
-  def create(self, validated_data):
-    user=User(email=validated_data['email'],username=validated_data["username"],phone_num=validated_data['phone_num'])
-    user.set_password(validated_data.get("password"))
-    user.save()
-    tokens=get_tokens_for_user(user)
-    return {'token':tokens}
 
 
 class loginserializer(serializers.Serializer):
@@ -127,10 +116,26 @@ class ChangePasswordSerializer(serializers.Serializer):
         user.save()
         return user
 
+class blogapi(serializers.ModelSerializer):
+   coments=ComentSerializer(many=True,read_only=True)
+   class Meta:
+    model=Blogs
+    fields=['id','blog_owner','blog_text','blog_img','coments']
+    read_only_fields=['coments',]
 
+class registerserializer(serializers.ModelSerializer):
+  password=serializers.CharField(write_only=True)
+  blogs=blogapi(many=True,read_only=True)
+  class Meta:
+    model=User
+    fields=["email","phone_num","password","username","blogs",]
 
-
-
+  def create(self, validated_data):
+    user=User(email=validated_data['email'],username=validated_data["username"],phone_num=validated_data['phone_num'])
+    user.set_password(validated_data.get("password"))
+    user.save()
+    tokens=get_tokens_for_user(user)
+    return {'token':tokens}
 
 
 

@@ -11,6 +11,7 @@ router=DefaultRouter()
 router.register(r"cvs",views.comentviewset,basename="cvs")
 router.register(r"rocvs",views.readonlycomentviewset,basename="rocvs")
 router.register(r"cs",views.comentset,basename="cs")
+router.register(r"blogs",views.apiblogsview,basename="blogwithcoment")
 
 
 urlpatterns = [
@@ -34,4 +35,6 @@ urlpatterns = [
    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
    path('api/token/blacklist/', TokenBlacklistView.as_view(), name='token_blacklist'),
    path("api/changepassword/",views.password_change.as_view(),name="password_change"),
+
+
 ]

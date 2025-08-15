@@ -5,7 +5,7 @@ User=get_user_model()
 # Create your models here.
 
 class Blogs(models.Model):
-  blog_owner=models.ForeignKey(User,on_delete=models.CASCADE)
+  blog_owner=models.ForeignKey(User,on_delete=models.CASCADE,related_name="blogs")
   blog_text=models.TextField()
   blog_img=models.ImageField(upload_to="blogs", blank=True,null=True)
   blog_upload_time=models.DateTimeField(auto_now_add=True)
@@ -17,7 +17,7 @@ class Blogs(models.Model):
 
 
 class Comment(models.Model):
-  blog=models.ForeignKey(Blogs,on_delete=models.CASCADE)
+  blog=models.ForeignKey(Blogs,on_delete=models.CASCADE,related_name="coments")
   coment_text=models.TextField(max_length=300)
   coment_date=models.DateTimeField(auto_now_add=True)
 

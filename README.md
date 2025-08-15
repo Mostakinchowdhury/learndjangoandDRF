@@ -6691,3 +6691,239 @@ UserSerializer(user_instance).data
 ```
 
 ---
+
+## ✅ Day 24: Custom Actions in ViewSet
+
+- @action(detail=True/False)
+
+- Custom route via router
+
+- Example: /user/me/, /order/{id}/cancel/
+
+- Custom Action আসলে কী, কখন এবং কেন দরকার
+
+- @action decorator — কী, কোন argument কেন লাগে, ভিতরে কীভাবে কাজ করে
+
+- Permission, serializer, authentication কিভাবে custom action-এ আলাদা করা যায়
+
+### 1️⃣ Custom Action কী, কখন ও কেন দরকার
+
+সাধারণ ViewSet flow: যখন তুমি ModelViewSet ব্যবহার করো, তখন DRF তোমাকে default action দেয়:
+
+list → /items/
+
+retrieve → /items/{id}/
+
+create → /items/ (POST)
+
+update / partial_update → /items/{id}/
+
+destroy → /items/{id}/
+
+👉 কিন্তু ধরো তোমার এমন API দরকার যা default action-এর মধ্যে পড়ে না। যেমন:
+
+/user/me/ → শুধু লগইন করা ইউজারের প্রোফাইল ফেরত দিবে (id লাগবে না)
+
+/order/{id}/cancel/ → নির্দিষ্ট order cancel করবে
+
+এগুলো CRUD-এর মধ্যে পড়ে না, তাই আমরা custom action বানাই।
+
+### 2️⃣ @action decorator — কী, argument কেন লাগে, ভিতরে কীভাবে কাজ করে
+
+@action কী করে?
+
+এটা DRF-এর router-কে বলে দেয়: "এই ViewSet-এর জন্য নতুন একটা route বানাও।"
+
+route হতে পারে detail route (একটা নির্দিষ্ট object-এর জন্য) বা list route (পুরো collection-এর জন্য)।
+
+Syntex:
+
+```python
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework import viewsets
+
+class OrderViewSet(viewsets.ModelViewSet):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        order = self.get_object()
+        order.status = 'cancelled'
+        order.save()
+        return Response({'status': 'order cancelled'})
+```
+
+> @action-এর গুরুত্বপূর্ণ argument
+
+**1.** `detail`
+
+- True → route object-specific হবে, /orders/{id}/cancel/
+
+- False → route পুরো list-লেভেলের হবে, /orders/cancel_all/
+
+- Router বুঝে নেয় এটা URL pattern-এ {pk} রাখবে কিনা।
+
+**2.** `methods`
+
+- কোন HTTP method allow হবে → যেমন ['get'], ['post'], ['put']
+
+- default: ['get']
+
+**3.** `url_path`
+
+- route-এর নাম override করতে চাইলে
+
+- যেমন @action(detail=True, url_path='stop-order') → /orders/{id}/stop-order/
+
+**4.** `url_name`
+
+- DRF-এর reverse lookup-এর জন্য internal name
+- deafalt hisabe thake basename-actionmame
+
+#### 🎯 ভিতরে কীভাবে কাজ করে
+
+- DRF-এর router যখন তোমার ViewSet scan করে, এটা class-এর মধ্যে থাকা সব @action decorator চেক করে।
+
+- @action decorator আসলে ViewSet-এর method-এ একটা attribute সেট করে (যেমন \_is_action = True)।
+
+- Router সেই attribute দেখে নতুন URL pattern বানায়।
+
+- detail=True হলে pattern হয় /modelname/{pk}/<methodname>/ detail=False হলে /modelname/<methodname>/
+
+```python
+# rest_framework/decorators.py
+
+def action(methods=None, detail=None, url_path=None, url_name=None,
+           **kwargs):
+    """
+    Mark a ViewSet method as a routable action.
+    """
+    methods = ['get'] if (methods is None) else [m.lower() for m in methods]
+
+    # Wrapper function
+    def decorator(func):
+        func.bind_to_methods = methods   # HTTP methods list
+        func.detail = detail             # detail True/False
+        func.url_path = url_path or func.__name__  # path name
+        func.url_name = url_name or func.__name__  # route name
+
+        # Extra keyword arguments (permissions, serializers ইত্যাদি)
+        for key, value in kwargs.items():
+            setattr(func, key, value)
+
+        return func
+
+    return decorator
+```
+
+- DefaultRouter class যখন URL বানায়, তখন ViewSet-এর সব method scan করে দেখে:
+
+- method-এ bind_to_methods attribute আছে কিনা (মানে এটা action)
+
+- থাকলে router ওই method দিয়ে নতুন route বানায়।
+
+### 3️⃣ Permission, serializer, authentication আলাদা করা
+
+Custom action method-এর ভেতরে তুমি আলাদা config দিতে পারো।
+
+উদাহরণ:
+
+```python
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
+
+class OrderViewSet(viewsets.ModelViewSet):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+
+    @action(detail=True, methods=['post'],
+            permission_classes=[IsAuthenticated],
+            authentication_classes=[TokenAuthentication],
+            serializer_class=OrderCancelSerializer)
+    def cancel(self, request, pk=None):
+        # এখানে শুধু logged-in user order cancel করতে পারবে
+        pass
+```
+
+### 4️⃣Default action (list, create, retrieve...) এ আলাদা permission দেওয়ার উপায়
+
+##### **Option 1: get_permissions() override করা**
+
+এটাই DRF-এর সবচেয়ে clean উপায়।
+
+```python
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework import viewsets
+
+class MyViewSet(viewsets.ModelViewSet):
+    queryset = MyModel.objects.all()
+    serializer_class = MySerializer
+
+    def get_permissions(self):
+        if self.action == 'list':
+            permission_classes = [AllowAny]  # Public list
+        elif self.action == 'create':
+            permission_classes = [IsAuthenticated]  # Only logged in can create
+        elif self.action == 'retrieve':
+            permission_classes = [IsAuthenticated]
+        else:
+            permission_classes = [IsAuthenticated]
+
+        return [permission() for permission in permission_classes]
+```
+
+##### **Option 2: প্রতিটা method আলাদা করা**
+
+যদি তুমি ModelViewSet ব্যবহার না করো, বরং ViewSet + নিজের method লেখো, তাহলে প্রতিটা method-এ
+decorator দিয়ে permission দিতে পারো।
+
+```python
+from rest_framework.decorators import action, permission_classes
+from rest_framework.permissions import IsAuthenticated
+
+class MyViewSet(viewsets.ViewSet):
+    @permission_classes([IsAuthenticated])
+    def list(self, request):
+        pass
+```
+
+কিন্তু এই পদ্ধতি DRF core team recommend করে না, কারণ permission check এক জায়গায় handle করাই ভালো
+(Option 1)।
+
+### 5️⃣ Router কীভাবে @action detect করে (ভিতরের প্রসেস)
+
+**1.** তুমি যখন DefaultRouter().register() করো, router get_routes() method দিয়ে তোমার ViewSet
+inspect করে।
+
+**2.** router class method-গুলো বের করে দেখে:
+
+_(i)_ method-এর নাম যদি list, create, retrieve হয় → default CRUD route বানায়।
+
+_(ii)_ method-এ যদি bind_to_methods attribute থাকে → custom action route বানায়।
+
+**3.** router তারপর detail=True হলে URL pattern-এ {pk} যোগ করে।
+
+**4.** সবশেষে DRF-এর view dispatch system ওই method call করে request process করে।
+
+`📌 অর্থাৎ, @action আসলে শুধু method-এ কিছু attribute সেট করে দেয়, আর router ওই attribute দেখে নতুন URL বানায়।`
+
+```txt
+এত function/class/decorator মনে রাখার টিপস
+
+বড় ডেভেলপাররা সব কিছু মুখস্থ করে রাখে না। তারা জানে:
+
+Concept — কোনটা কী কাজে লাগে
+
+Docs Read করার Skill — অফিসিয়াল ডকুমেন্ট দ্রুত পড়া ও খোঁজা
+
+Pattern — একই ধরণের কাজ বারবার করলে syntax মনে থাকে
+
+Cheat Sheet — গুরুত্বপূর্ণ জিনিস নিজের নোটে রাখা
+
+Practice — ২-৩ বার করলে muscle memory হয়ে যায়
+
+```
+
+---

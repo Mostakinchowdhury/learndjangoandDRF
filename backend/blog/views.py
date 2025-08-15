@@ -30,6 +30,11 @@ class registerview(APIView):
       return Response({"message":"user created succesfully",**mydata},status=status.HTTP_201_CREATED)
     else:
       return Response(serialize.errors,status=status.HTTP_400_BAD_REQUEST)
+  def get(self,request):
+    if not request.user.is_authenticated:
+            return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+    serialize=registerserializer(request.user)
+    return Response(serialize.data,status=status.HTTP_200_OK)
 
 class loginview(APIView):
   permission_classes=[AllowAny,]
@@ -215,6 +220,19 @@ class readonlycomentviewset(ReadOnlyModelViewSet):
 class comentset(ViewSet,mixins.ListModelMixin,mixins.CreateModelMixin,generics.GenericAPIView):
   queryset=Comment.objects.all()
   serializer_class=ComentSerializer
+
+from rest_framework.parsers import MultiPartParser,FormParser
+from rest_framework.renderers import JSONRenderer
+from rest_framework.permissions import IsAuthenticated,IsAdminUser
+from .serializer import blogapi
+class apiblogsview(ModelViewSet):
+  queryset=Blogs.objects.all()
+  parser_classes=[MultiPartParser,FormParser]
+  renderer_classes=[JSONRenderer]
+  permission_classes=[IsAuthenticated]
+  serializer_class=blogapi
+
+
 
 
 
