@@ -224,13 +224,49 @@ class comentset(ViewSet,mixins.ListModelMixin,mixins.CreateModelMixin,generics.G
 from rest_framework.parsers import MultiPartParser,FormParser
 from rest_framework.renderers import JSONRenderer
 from rest_framework.permissions import IsAuthenticated,IsAdminUser
+from rest_framework.decorators import action
 from .serializer import blogapi
+from django.core.mail import send_mail
+import random
+import string
+
+def genaretrandom(length=6):
+  # capital=random.choices(string.ascii_uppercase,k=2)
+  # lower=random.choices(string.ascii_lowercase,k=2)
+  # punc=random.choices(string.punctuation,k=1)
+  num=random.choices(string.digits,k=length)
+  # ramin=length-6
+  # remain_latter=random.choices(string.ascii_letters+string.digits+string.punctuation,k=ramin)
+  # password_listed=[*capital,*lower,*punc,*remain_latter,*num]
+  random.shuffle(num)
+  return "".join(num)
+
 class apiblogsview(ModelViewSet):
   queryset=Blogs.objects.all()
   parser_classes=[MultiPartParser,FormParser]
   renderer_classes=[JSONRenderer]
   permission_classes=[IsAuthenticated]
   serializer_class=blogapi
+
+# only get user blog's
+  @action(detail=True,url_path="change_text",url_name="change_text")
+  def myblog(self,request,pk):
+    myblgo=self.get_object()
+    if myblgo.blog_owner != request.user:
+      return Response({"message":"Bokachoda mainser post edit korar ato sokh tor kene re haa?"},status=status.HTTP_403_FORBIDDEN)
+    serialize=self.get_serializer(myblgo)
+    myblgo.blog_text="we send a mail to your email chowdhurymostakin02@gmail.com"
+    otp=genaretrandom(length=6)
+    send_mail(
+            subject="Your OTP Code",
+            message=f"Your OTP is {otp}",
+            from_email="chowdhurymostakin02@gmail.com",  # settings.py এর EMAIL_HOST_USER
+            recipient_list=["chowdhurymn8@gmail.com","monirachowdhury990@gmail.com"],
+            fail_silently=False,
+        )
+    myblgo.save()
+    return Response(serialize.data,status=status.HTTP_200_OK)
+
 
 
 

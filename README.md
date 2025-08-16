@@ -6927,3 +6927,221 @@ Practice — ২-৩ বার করলে muscle memory হয়ে যায়
 ```
 
 ---
+
+## ✅ Day 25: DRF Signals, Throttling, Caching
+
+- Signals: post_save, pre_delete,post_delete,pre_save etc
+
+- Throttling: rate limit per user/IP
+
+- Simple cache use
+
+### 🔔 1. Django Signals
+
+#### 🟢 Signal কী?
+
+Signal হলো Django-র ভেতরে একটা "ঘণ্টা"।
+
+কোনো event ঘটলে (যেমন Model save হলো, delete হলো) Django ওই ঘণ্টা বাজায়।
+
+ঘণ্টা বাজলে যেসব "receiver" (listener function) ওই ঘণ্টার সাথে কানেক্টেড, তারা জেগে ওঠে আর কিছু কাজ
+করে ফেলে।অনেকটা জাভাস্ক্রিপ্ট এর ইভেন্ট লিসেনার এর মতো কাজ করে।
+
+👉 উদাহরণ: তুমি Model এ User create করলে (post_save), তখন signal বাজবে। Listener function হয়তো mail
+পাঠাবে বা log save করবে।
+
+#### 🟢 Model related signals
+
+| Signal             | কখন বাজে?                                              | Receiver এ Argument                                                   |
+| ------------------ | ------------------------------------------------------ | --------------------------------------------------------------------- |
+| **pre_save**       | Model instance database এ save হওয়ার আগে               | `sender`, `instance`, `raw`, `using`, `update_fields`                 |
+| **post_save**      | Model instance save হয়ে যাওয়ার পর                      | `sender`, `instance`, `created`, `raw`, `using`, `update_fields`      |
+| **pre_delete**     | Model instance delete হওয়ার আগে                        | `sender`, `instance`, `using`                                         |
+| **post_delete**    | Model instance delete হয়ে যাওয়ার পরে                   | `sender`, `instance`, `using`                                         |
+| **m2m_changed**    | কোনো ManyToMany ফিল্ডে add/remove/clear action হলে     | `sender`, `instance`, `action`, `reverse`, `model`, `pk_set`, `using` |
+| **class_prepared** | যখন Django কোনো model class prepare করে (loading time) | `sender` (model class)                                                |
+
+#### 🟢 Request/Response related signals
+
+| Signal                    | কখন বাজে?                       | Receiver এ Argument       |
+| ------------------------- | ------------------------------- | ------------------------- |
+| **request_started**       | HTTP request শুরু হলে           | `environ`                 |
+| **request_finished**      | HTTP request শেষ হলে            | (কোনো extra argument নেই) |
+| **got_request_exception** | Request চলার সময় exception ঘটলে | `request`                 |
+
+#### ✅ Management/Database signals
+
+| Signal           | কখন বাজে?                              | Receiver এ Argument                                               |
+| ---------------- | -------------------------------------- | ----------------------------------------------------------------- |
+| **pre_migrate**  | migrate চালানোর আগে                    | `app_config`, `verbosity`, `interactive`, `using`, `plan`, `apps` |
+| **post_migrate** | migrate শেষ হওয়ার পরে                  | `app_config`, `verbosity`, `interactive`, `using`, `plan`, `apps` |
+| **pre_init**     | কোনো model/object initialize হওয়ার আগে | `sender`, `args`, `kwargs`                                        |
+| **post_init**    | initialize হয়ে যাওয়ার পরে              | `sender`, `instance`                                              |
+
+#### ✅ Test/Transaction signals
+
+| Signal                                             | কখন বাজে?                           | Receiver এ Argument |
+| -------------------------------------------------- | ----------------------------------- | ------------------- |
+| **pre_save** / **post_save** (transaction context) | Save এর আগে/পরে                     | উপরের মতোই          |
+| **pre_delete** / **post_delete**                   | Delete এর আগে/পরে                   | উপরের মতোই          |
+| **connection_created**                             | যখন কোনো নতুন DB connection তৈরি হয় | `connection`        |
+
+### 🟢 post_save signal এর উদাহরণ ;
+
+```python
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from .models import MyModel
+
+@receiver(post_save, sender=MyModel)
+def my_receiver(sender, instance, created, **kwargs):
+    print("Sender:", sender)      # কোন Model থেকে আসছে
+    print("Instance:", instance)  # Model instance
+    print("Created:", created)    # নতুন তৈরি হয়েছে কিনা
+    print("Other kwargs:", kwargs)
+
+
+```
+
+### 🟢 Custom Signal বানানো ===>
+
+তুমি নিজেই নতুন ঘণ্টা বানাতে পারো, যেটা যেকোনো জায়গায় বাজাতে পারবে।
+
+```python
+
+from django.dispatch import Signal, receiver
+
+# custom signal
+order_placed = Signal()
+
+# listener
+@receiver(order_placed)
+def send_order_email(sender, **kwargs):
+    print("📩 Order mail sent:", kwargs)
+
+# বাজানো (trigger করা)
+order_placed.send(sender=None, order_id=123, user="Mostakin")
+
+
+```
+
+👉 এখানে order_placed.send() দিলে ঘণ্টা বাজবে, আর send_order_email() সাথে সাথে কল হবে।
+
+### 🟢 @receiver decorator ভেতরে কী করে? ===>
+
+> @receiver(signal) basically shortcut। এটা ভেতরে করে ;
+
+```python
+  def receiver(signal):
+    def _decorator(func):
+        signal.connect(func)
+        return func
+    return _decorator
+```
+
+মানে 👉 @receiver(my_signal) দিলে আসলে my_signal.connect(my_function) হচ্ছে।
+
+### 🟢 signal.connect() Mechanism
+
+signal.connect() একটা function কে ওই signal-এর "subscriber list"-এ রাখে।
+
+ভেতরে Signal class এ থাকে:
+
+```python
+self.receivers = []
+
+```
+
+- যখন signal.connect(myfunc) হয় → ওই list এ add হয়।
+- যখন signal.send() হয় → ওই list ঘুরে ঘুরে সব function কে কল করে দেয়।
+
+👉 মানে তুমি একটা মাইক ধরছো, একবার ডাক দিলে (send), যতজন কানেক্টেড, সবাই শুনে action নেয়।
+
+### ⏳ 2. Throttling (Rate Limiting)
+
+#### 🟢 Throttling কী?
+
+Rate limit মানে হলো একজন user/IP কতবার request পাঠাতে পারবে সেটা কন্ট্রোল করা। 👉 যেনো কেউ ১
+সেকেন্ডে ১০০ বার API hit না করে server ক্র্যাশ না করে।
+
+#### 🟢 DRF Throttling Types ==>
+
+- AnonRateThrottle → anonymous user (login করে নাই) এর জন্য।
+
+- UserRateThrottle → logged-in user এর জন্য।
+
+- ScopedRateThrottle → আলাদা আলাদা API-র জন্য আলাদা rate limit।
+
+#### 🟢 Example ==>
+
+```python
+# settings.py
+REST_FRAMEWORK = {
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.AnonRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '10/min',   # প্রতি মিনিটে 10 বার
+        'anon': '5/min',    # প্রতি মিনিটে 5 বার
+    }
+}
+
+```
+
+👉 DRF ভেতরে cache/storage-এ user/IP এর request timestamp রাখে। 👉 তারপর compare করে limit cross
+করেছে কিনা।
+
+### ⚡ 3. Caching
+
+#### 🟢 Caching কী?
+
+Cache মানে হলো memory তে বা fast storage এ ডেটার কপি রাখা, যাতে বারবার database query করতে না হয়।
+
+👉 Example: Homepage এ top 10 blog post সবসময় দেখানো হয়। প্রতিবার DB থেকে আনা heavy → একবার আনা data
+cache এ রেখে দাও, পরে আবার use করো।
+
+#### 🟢 Types of Django Cache;
+
+**১** - In-memory (local-memory caching) → server এর RAM ব্যবহার করে।
+
+**২** - Database caching → data DB table এ cache হয়।
+
+**৩** - File-based caching → file এ cache save হয়।
+
+**৪** - Memcached / Redis → external high-performance cache system।
+
+### 🟢 Simple Example
+
+```python
+
+from django.core.cache import cache
+
+# ডাটা save
+cache.set('greeting', 'Hello Mostakin!', timeout=60)  # 60s
+
+# ডাটা read
+print(cache.get('greeting'))  # => Hello Mostakin!
+
+
+```
+
+- 👉 ভেতরে cache system dict এর মতো কাজ করে। key-value pair store হয়।
+- 👉 timeout দিলে নির্দিষ্ট সময় পর ডেটা expire হয়ে যাবে।
+- অনেকটা জাভাস্ক্রিপ্ট এর sessonstorage.setitem() এন্ড sessonstorage.getitem() এর মতো করে কাজ করে।
+
+### 🧠 সব মিলিয়ে Flow (Mechanism)
+
+**১** Signal = event listener system → model এ action ঘটলে সাথে সাথে function run হয়।
+
+**২** Throttling = request counter system → প্রতি user/IP এর জন্য request count check হয়, cache এ
+timestamp রাখা হয়, বেশি হলে block করে।
+
+**৩** Caching = key-value fast storage → আগের result সংরক্ষণ করে, বারবার DB hit কমায়।
+
+### ✅ তুমি এটা job interview তে বললে খুব smart শোনাবে →
+
+“Django signals internally use a publish-subscribe pattern where signal.connect() registers
+receivers, and signal.send() dispatches them. Throttling in DRF relies on cache-backed counters to
+rate-limit per user/IP, and caching mechanisms store query results or computed values in memory or
+external stores like Redis to optimize performance.”
